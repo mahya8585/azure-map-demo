@@ -289,6 +289,9 @@
 		// デモ用です。Azure MapsアカウントのPrimary Keyへ置き換えてください。
 		const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
 		const TOKYO_STATION = { name: "東京駅", position: [139.767125, 35.681236] };
+		const ROUTE_CHECKPOINT_GAP_METERS = 10;
+		const SNAP_CHUNK_DISTANCE_METERS = 80000;
+		const SNAP_CHUNK_POINT_LIMIT = 4500;
 		const SEARCH_DELAY_MS = 350;
 
 		const state = {
@@ -648,7 +651,8 @@
 					renderWaypointShapes();
 				}
 				state.routeResult = routeFeature;
-				renderRoute(routeFeature, optimizeOrder);
+				const displayGeometry = await refineRouteGeometry(routeFeature.geometry || routeFeature.properties?.geometry);
+				renderRoute(routeFeature, optimizeOrder, displayGeometry);
 				setStatus(optimizeOrder ? "訪問順を最適化してルートを表示しました。" : "ルートを表示しました。", false);
 			} catch (error) {
 				handleError("ルート計算", error);
@@ -703,13 +707,17 @@
 			}
 		}
 
-		function renderRoute(routeFeature, optimized) {
-			const lineCoordinates = routeFeature.geometry?.coordinates || [];
-			const positions = lineCoordinates.flat();
+		function renderRoute(routeFeature, optimized, displayGeometry) {
+			const geometry = normalizeRouteGeometry(displayGeometry || routeFeature?.geometry || routeFeature?.properties?.geometry);
+			const positions = geometry.positions;
 			if (!positions.length) throw new Error("ルート形状を取得できませんでした。");
 
-			state.routeSource.clear();
-			state.routeSource.add(new atlas.data.MultiLineString(lineCoordinates));
+			const routeLines = geometry.type === "LineString" ? [geometry.coordinates] : geometry.coordinates;
+			state.routeSource.setShapes(routeLines.map((coordinates, legIndex) => ({
+				type: "Feature",
+				geometry: { type: "LineString", coordinates },
+				properties: { legIndex }
+			})));
 			state.map.setCamera({ bounds: atlas.data.BoundingBox.fromPositions(positions), padding: 70 });
 
 			const summary = routeFeature.properties || {};
@@ -730,6 +738,133 @@
 			);
 			box.append(condition, grid);
 			elements.routeSummary.append(box);
+		}
+
+		async function refineRouteGeometry(routeGeometry) {
+			const geometry = normalizeRouteGeometry(routeGeometry);
+			const routeLines = geometry.type === "LineString" ? [geometry.coordinates] : geometry.coordinates;
+			const refinedLines = [];
+
+			for (const routeLine of routeLines) {
+				try {
+					refinedLines.push(await snapRouteLineToRoads(routeLine));
+				} catch (error) {
+					console.warn("道路形状の高精度化に失敗したため、元のルート形状を使用します。", error);
+					refinedLines.push(routeLine);
+				}
+			}
+
+			return { type: "MultiLineString", coordinates: refinedLines };
+		}
+
+		async function snapRouteLineToRoads(routeLine) {
+			const checkpoints = densifyRouteLine(routeLine, ROUTE_CHECKPOINT_GAP_METERS);
+			const chunks = splitSnapCheckpoints(checkpoints);
+			const snappedLine = [];
+
+			for (const chunk of chunks) {
+				const response = await mapsRequest("/route/snapToRoads", { "api-version": "2025-01-01" }, {
+					method: "POST",
+					headers: { "Content-Type": "application/geo+json" },
+					body: JSON.stringify({
+						type: "FeatureCollection",
+						features: chunk.map((coordinates) => ({
+							type: "Feature",
+							geometry: { type: "Point", coordinates },
+							properties: {}
+						})),
+						interpolate: true,
+						travelMode: "driving"
+					})
+				});
+				const snappedChunk = (response.features || [])
+					.map((feature) => feature.geometry?.coordinates)
+					.filter(isValidPosition);
+				if (snappedChunk.length < 2) throw new Error("道路上の補間点を取得できませんでした。");
+				if (snappedLine.length && distanceInMeters(snappedLine.at(-1), snappedChunk[0]) < 1) snappedChunk.shift();
+				snappedLine.push(...snappedChunk);
+			}
+
+			return snappedLine;
+		}
+
+		function densifyRouteLine(routeLine, maxGapMeters) {
+			if (routeLine.length < 2) return routeLine.slice();
+			const checkpoints = [routeLine[0]];
+			for (let index = 1; index < routeLine.length; index += 1) {
+				const start = routeLine[index - 1];
+				const end = routeLine[index];
+				const divisions = Math.max(1, Math.ceil(distanceInMeters(start, end) / maxGapMeters));
+				for (let division = 1; division <= divisions; division += 1) {
+					const ratio = division / divisions;
+					checkpoints.push([
+						start[0] + (end[0] - start[0]) * ratio,
+						start[1] + (end[1] - start[1]) * ratio
+					]);
+				}
+			}
+			return checkpoints;
+		}
+
+		function splitSnapCheckpoints(checkpoints) {
+			if (checkpoints.length < 2) return [];
+			const chunks = [];
+			let chunk = [checkpoints[0]];
+			let chunkDistance = 0;
+
+			for (let index = 1; index < checkpoints.length; index += 1) {
+				const previous = checkpoints[index - 1];
+				const current = checkpoints[index];
+				const gap = distanceInMeters(previous, current);
+				if (chunk.length >= SNAP_CHUNK_POINT_LIMIT || chunkDistance + gap > SNAP_CHUNK_DISTANCE_METERS) {
+					chunks.push(chunk);
+					chunk = [previous];
+					chunkDistance = 0;
+				}
+				chunk.push(current);
+				chunkDistance += gap;
+			}
+			chunks.push(chunk);
+			return chunks;
+		}
+
+		function distanceInMeters(start, end) {
+			const radians = Math.PI / 180;
+			const latitudeDelta = (end[1] - start[1]) * radians;
+			const longitudeDelta = (end[0] - start[0]) * radians;
+			const haversine = Math.sin(latitudeDelta / 2) ** 2
+				+ Math.cos(start[1] * radians) * Math.cos(end[1] * radians) * Math.sin(longitudeDelta / 2) ** 2;
+			return 12742000 * Math.asin(Math.sqrt(haversine));
+		}
+
+		function isValidPosition(position) {
+			return Array.isArray(position) && position.length >= 2 && Number.isFinite(position[0]) && Number.isFinite(position[1]);
+		}
+
+		function normalizeRouteGeometry(geometry) {
+			if (!geometry || !Array.isArray(geometry.coordinates) || !geometry.coordinates.length) {
+				return { type: "LineString", coordinates: [], positions: [] };
+			}
+
+			const coordinates = geometry.coordinates;
+			const isLineString = isValidPosition(coordinates[0]);
+			if (isLineString) {
+				const valid = coordinates.filter(isValidPosition);
+				return { type: "LineString", coordinates: valid, positions: valid };
+			}
+
+			if (Array.isArray(coordinates[0]) && Array.isArray(coordinates[0][0])) {
+				const valid = coordinates
+					.map((segment) => Array.isArray(segment) ? segment.filter(isValidPosition) : [])
+					.filter((segment) => segment.length);
+				return {
+					type: "MultiLineString",
+					coordinates: valid,
+					positions: valid.flat()
+				};
+			}
+
+			return { type: "LineString", coordinates: [], positions: [] };
 		}
 
 		function updateTrafficLayer() {
