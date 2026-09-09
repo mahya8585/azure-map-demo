@@ -170,6 +170,12 @@
 		.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
 		.info-cell { min-height: 58px; padding: 9px; border: 1px solid var(--line); background: #f8faf7; }
 		.info-cell strong { display: block; margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
+		.weather-legend { margin: 12px 0; padding: 10px; border: 1px solid var(--line); background: #f8faf7; }
+		.weather-legend[hidden] { display: none; }
+		.weather-legend-title { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; font-size: 12px; }
+		.weather-legend-title span { color: var(--muted); font-size: 10px; }
+		.weather-legend-row { display: grid; grid-template-columns: 48px repeat(4, 1fr); align-items: center; gap: 4px; margin-top: 4px; font-size: 11px; }
+		.weather-swatch { height: 16px; border: 1px solid rgba(23, 32, 29, 0.16); }
 
 		.status {
 			position: absolute;
@@ -267,6 +273,15 @@
 			<h2>地点情報</h2>
 			<p>地図をクリックすると対象地点を変更できます。</p>
 			<p id="selected-coordinate" class="coordinate"></p>
+			<label class="check" style="margin-bottom: 12px;"><input id="show-weather" type="checkbox"> 雨・雪レーダーを地図に表示</label>
+			<p class="eyebrow">現在の降水域を半透明レイヤーで表示します（最大ズーム15）。</p>
+			<div id="weather-legend" class="weather-legend" aria-label="雨・雪レーダーの色凡例。各行とも左から弱、中、強、非常に強い。" hidden>
+				<div class="weather-legend-title"><strong>レーダー凡例</strong><span>弱 → 中 → 強 → 非常に強い</span></div>
+				<div class="weather-legend-row"><span>雨</span><span class="weather-swatch" style="background: #93c701;"></span><span class="weather-swatch" style="background: #ffd701;"></span><span class="weather-swatch" style="background: #f05514;"></span><span class="weather-swatch" style="background: #dc250e;"></span></div>
+				<div class="weather-legend-row"><span>雪</span><span class="weather-swatch" style="background: #9ec8f2;"></span><span class="weather-swatch" style="background: #2a8fdb;"></span><span class="weather-swatch" style="background: #144bed;"></span><span class="weather-swatch" style="background: #020096;"></span></div>
+				<div class="weather-legend-row"><span>凍結性</span><span class="weather-swatch" style="background: #e6a5c8;"></span><span class="weather-swatch" style="background: #d24fa0;"></span><span class="weather-swatch" style="background: #b71691;"></span><span class="weather-swatch" style="background: #7a1570;"></span></div>
+				<div class="weather-legend-row"><span>混合</span><span class="weather-swatch" style="background: #c196e6;"></span><span class="weather-swatch" style="background: #ae6ee6;"></span><span class="weather-swatch" style="background: #8a32d7;"></span><span class="weather-swatch" style="background: #6500ba;"></span></div>
+			</div>
 			<button id="place-info-button" class="button" type="button">天気・タイムゾーンを取得</button>
 			<div id="place-info" class="info-grid"></div>
 
@@ -299,6 +314,7 @@
 			searchSource: null,
 			routeSource: null,
 			waypointSource: null,
+			weatherLayer: null,
 			popup: null,
 			searchTimer: null,
 			searchController: null,
@@ -341,7 +357,7 @@
 				"workspace", "mobile-toggle", "search-input", "search-button", "load-sample-button",
 				"search-results", "waypoint-list", "route-type", "use-traffic", "show-traffic",
 				"avoid-motorways", "avoid-tolls", "avoid-ferries", "route-button", "optimize-button",
-				"route-summary", "selected-coordinate", "place-info-button", "place-info", "ip-input", "ip-button",
+				"route-summary", "selected-coordinate", "show-weather", "weather-legend", "place-info-button", "place-info", "ip-input", "ip-button",
 				"ip-result", "status"
 			].forEach((id) => { elements[toCamelCase(id)] = document.getElementById(id); });
 		}
@@ -358,6 +374,7 @@
 			elements.routeButton.addEventListener("click", () => calculateRoute(false));
 			elements.optimizeButton.addEventListener("click", () => calculateRoute(true));
 			elements.showTraffic.addEventListener("change", updateTrafficLayer);
+			elements.showWeather.addEventListener("change", updateWeatherLayer);
 			elements.placeInfoButton.addEventListener("click", loadPlaceInfo);
 			elements.ipButton.addEventListener("click", loadIpGeolocation);
 		}
@@ -389,6 +406,14 @@
 				iconOptions: { image: "pin-round-blue", allowOverlap: true },
 				textOptions: { textField: ["get", "label"], color: "#ffffff", offset: [0, -0.05], allowOverlap: true }
 			});
+			state.weatherLayer = new atlas.layer.TileLayer({
+				tileUrl: "https://{azMapsDomain}/map/tile?api-version=2024-04-01&tilesetId=microsoft.weather.radar.main&zoom={z}&x={x}&y={y}",
+				opacity: 0.72,
+				tileSize: 256,
+				maxSourceZoom: 15,
+				visible: false
+			}, "weather-radar-layer");
+			state.map.layers.add(state.weatherLayer, "labels");
 			state.map.layers.add([routeOutline, routeLayer, searchLayer, waypointLayer]);
 
 			state.popup = new atlas.Popup({ pixelOffset: [0, -24] });
@@ -402,6 +427,7 @@
 
 			renderWaypointShapes();
 			updateTrafficLayer();
+			updateWeatherLayer();
 			setStatus("地図を東京駅中心で表示しました。", false);
 		}
 
@@ -870,6 +896,13 @@
 		function updateTrafficLayer() {
 			if (!state.map) return;
 			state.map.setTraffic({ flow: elements.showTraffic.checked ? "relative" : "none", incidents: elements.showTraffic.checked });
+		}
+
+		function updateWeatherLayer() {
+			if (!state.weatherLayer) return;
+			state.weatherLayer.setOptions({ visible: elements.showWeather.checked });
+			elements.weatherLegend.hidden = !elements.showWeather.checked;
+			setStatus(elements.showWeather.checked ? "雨・雪レーダーを表示しました。" : "雨・雪レーダーを非表示にしました。", false);
 		}
 
 		async function loadPlaceInfo() {

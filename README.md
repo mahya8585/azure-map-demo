@@ -68,8 +68,9 @@ python -m http.server 8000
 
 1. 地図をクリックするか、検索結果の「地点情報」を押して対象座標を選びます。
 2. 「地点情報」タブで「天気・タイムゾーンを取得」を押します。
-3. 現在天気、気温、体感温度、湿度、風、タイムゾーン、現地時刻、UTCオフセット、日の出・日の入りを確認します。
-4. IP GeolocationではIPv4またはIPv6を入力し、ISO国・地域コードを取得します。
+3. 「雨・雪レーダーを地図に表示」を選ぶと、現在の降水域を半透明のタイルレイヤーで確認できます。表示される凡例で、雨・雪・凍結性降水・混合降水の種別と強度を判別できます。
+4. 現在天気、気温、体感温度、湿度、風、タイムゾーン、現地時刻、UTCオフセット、日の出・日の入りを確認します。
+5. IP GeolocationではIPv4またはIPv6を入力し、ISO国・地域コードを取得します。
 
 ### ルートの保存
 
@@ -97,6 +98,7 @@ python -m http.server 8000
 | Traffic | `map-demo.html` | 地図上の交通流とインシデント | Azure Maps Web SDK v3の`Map.setTraffic` |
 | Trafficを考慮した経路 | `map-demo.html` / `http-demo.html` | `fastestWithTraffic`による最速ルート。`map-demo.html`では`fastestWithoutTraffic`へ切替可能 | Route APIの`optimizeRoute` |
 | Weather | `map-demo.html` | 現在天気、気温、体感温度、湿度、風 | Azure Maps Weather REST API `1.1` |
+| Weatherレイヤー | `map-demo.html` | 現在の雨・雪レーダーを半透明表示 | Azure Maps Render REST API `2024-04-01`、Web SDK v3の`TileLayer` |
 | Time Zone | `map-demo.html` | タイムゾーン、現地時刻、UTCオフセット、日の出・日の入り | Azure Maps Time Zone REST API `1.0` |
 | IP Geolocation | `map-demo.html` | 入力IPのISO国・地域コード | Azure Maps Geolocation REST API `1.0` |
 | 端末の現在地 | `http-demo.html` | 現在位置の取得と地図移動 | ブラウザ標準の`navigator.geolocation` |
