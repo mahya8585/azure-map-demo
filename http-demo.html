@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="HTTP環境で動作する現在地取得とルート保存のデモ">
+	<title>Browser Route Lab | HTTP Demo</title>
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css">
+	<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+	<style>
+		:root {
+			--ink: #18211e;
+			--muted: #5d6964;
+			--paper: #f4f6f2;
+			--panel: #ffffff;
+			--line: #d6ddd8;
+			--green: #176b4d;
+			--green-dark: #0f513a;
+			--yellow: #f0c968;
+			--red: #b5473d;
+			--shadow: 0 16px 42px rgba(24, 33, 30, 0.18);
+		}
+
+		* { box-sizing: border-box; }
+		html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; color: var(--ink); background: var(--paper); font-family: "Yu Gothic UI", "BIZ UDPGothic", sans-serif; }
+		button, input, select { font: inherit; letter-spacing: 0; }
+		button { cursor: pointer; }
+		#map { position: absolute; inset: 0; }
+
+		.app-header {
+			position: absolute;
+			z-index: 4;
+			top: 16px;
+			left: 16px;
+			display: flex;
+			align-items: center;
+			gap: 14px;
+			min-height: 54px;
+			padding: 8px 14px;
+			color: #fff;
+			background: var(--ink);
+			box-shadow: var(--shadow);
+		}
+
+		.app-header strong { font-family: Georgia, "Yu Mincho", serif; font-size: 19px; }
+		.app-header span { color: #bdc9c3; font-size: 12px; }
+		.app-header a { color: #fff; font-size: 12px; }
+
+		.workspace {
+			position: absolute;
+			z-index: 3;
+			top: 86px;
+			bottom: 18px;
+			left: 16px;
+			width: min(420px, calc(100vw - 32px));
+			overflow-y: auto;
+			background: var(--panel);
+			border: 1px solid rgba(24, 33, 30, 0.14);
+			box-shadow: var(--shadow);
+		}
+
+		.section { padding: 16px; border-bottom: 1px solid var(--line); }
+		.section:last-child { border-bottom: 0; }
+		h1, h2 { margin: 0; font-family: Georgia, "Yu Mincho", serif; }
+		h2 { margin-bottom: 8px; font-size: 19px; }
+		p { margin: 6px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+		.field { display: grid; gap: 6px; margin: 12px 0; }
+		.field label, .eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+		input, select {
+			width: 100%;
+			min-height: 40px;
+			padding: 8px 10px;
+			border: 1px solid #acb7b0;
+			border-radius: 4px;
+			color: var(--ink);
+			background: #fff;
+		}
+
+		input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(23, 107, 77, 0.25); outline-offset: 1px; }
+		.button-row { display: flex; flex-wrap: wrap; gap: 8px; }
+		.button-row > * { flex: 1 1 130px; }
+		.button {
+			min-height: 40px;
+			padding: 8px 12px;
+			border: 1px solid var(--green-dark);
+			border-radius: 4px;
+			color: #fff;
+			background: var(--green);
+			font-weight: 700;
+		}
+		.button:hover { background: var(--green-dark); }
+		.button.secondary { color: var(--green-dark); background: #fff; }
+		.button.secondary:hover { background: #edf6f1; }
+		.button.danger { color: var(--red); border-color: #d9a6a1; background: #fff; }
+		.button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+		.coordinate {
+			padding: 10px;
+			border-left: 4px solid var(--yellow);
+			background: #fff8e7;
+			font-family: Consolas, monospace;
+			font-size: 12px;
+		}
+
+		.waypoints, .saved-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+		.waypoint { display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 8px; font-size: 13px; }
+		.waypoint span:first-child { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; background: var(--green); font-weight: 700; }
+		.saved-item { padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+		.saved-title { font-weight: 700; }
+		.saved-detail { margin: 4px 0 9px; color: var(--muted); font-size: 11px; }
+		.saved-actions { display: flex; gap: 6px; }
+		.mini-button { min-height: 30px; padding: 4px 8px; border: 1px solid #aeb8b2; border-radius: 4px; color: var(--ink); background: #fff; font-size: 12px; }
+		.empty { padding: 13px; color: var(--muted); border: 1px dashed #b7c1ba; text-align: center; font-size: 12px; }
+
+		.status {
+			position: absolute;
+			z-index: 5;
+			right: 16px;
+			bottom: 18px;
+			max-width: min(430px, calc(100vw - 32px));
+			padding: 10px 14px;
+			border-left: 4px solid var(--green);
+			color: #fff;
+			background: var(--ink);
+			box-shadow: var(--shadow);
+			font-size: 13px;
+		}
+		.status.error { border-left-color: #ef8177; }
+		.status[hidden] { display: none; }
+
+		.protocol-blocker {
+			position: fixed;
+			z-index: 20;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			padding: 24px;
+			background: rgba(24, 33, 30, 0.92);
+		}
+		.protocol-blocker[hidden] { display: none; }
+		.protocol-message { width: min(560px, 100%); padding: 24px; color: var(--ink); background: #fff; border-top: 6px solid var(--yellow); box-shadow: var(--shadow); }
+		.protocol-message h1 { font-size: 24px; }
+		.protocol-message code { display: block; margin: 14px 0; padding: 10px; overflow-wrap: anywhere; background: #edf1ed; }
+		.protocol-message a { color: var(--green-dark); }
+
+		@media (max-width: 700px) {
+			.app-header { top: 8px; right: 8px; left: 8px; min-height: 46px; }
+			.app-header span { display: none; }
+			.workspace { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; height: min(65vh, 620px); }
+			.status { right: 8px; bottom: calc(min(65vh, 620px) + 16px); left: 8px; max-width: none; }
+		}
+	</style>
+</head>
+<body>
+	<div id="map" aria-label="現在地と保存ルートを表示するAzure Maps地図"></div>
+
+	<header class="app-header">
+		<strong>Browser Route Lab</strong>
+		<span>HTTP専用デモ</span>
+		<a href="map-demo.html">ローカル実行デモへ</a>
+	</header>
+
+	<main class="workspace">
+		<section class="section">
+			<h2>端末の現在地</h2>
+			<p>ブラウザ標準のGeolocation APIで現在地を取得し、Azure Maps上へ表示します。</p>
+			<button id="current-location-button" class="button" type="button" disabled>現在地へ移動</button>
+			<div id="coordinate" class="coordinate" style="margin-top: 12px;">未取得</div>
+		</section>
+
+		<section class="section">
+			<h2>ルート保存</h2>
+			<p>サンプルルートをAzure Maps Route APIで計算し、地点をブラウザのlocalStorageへ保存します。</p>
+			<div class="field">
+				<label for="sample-route">デモルート</label>
+				<select id="sample-route">
+					<option value="tokyo">東京観光: 東京駅 → スカイツリー → 東京タワー → 羽田空港</option>
+					<option value="bay">東京湾岸: 東京駅 → 豊洲 → お台場 → 羽田空港</option>
+				</select>
+			</div>
+			<div class="button-row">
+				<button id="calculate-button" class="button secondary" type="button" disabled>ルートを表示</button>
+			</div>
+			<ol id="waypoint-list" class="waypoints"></ol>
+			<div class="field">
+				<label for="route-name">保存名</label>
+				<input id="route-name" type="text" placeholder="例: 営業デモルート">
+			</div>
+			<button id="save-button" class="button" type="button">現在のルートを保存</button>
+		</section>
+
+		<section class="section">
+			<h2>保存済みルート</h2>
+			<ul id="saved-routes" class="saved-list"></ul>
+		</section>
+	</main>
+
+	<div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+	<div id="protocol-blocker" class="protocol-blocker" hidden>
+		<div class="protocol-message">
+			<h1>HTTPサーバーが必要です</h1>
+			<p>このページは現在地取得と安定したlocalStorage利用を実演するため、file://からは起動しません。</p>
+			<code>python -m http.server 8000</code>
+			<p><a href="map-demo.html">HTTPサーバーなしで動くデモを開く</a></p>
+		</div>
+	</div>
+
+	<script>
+		"use strict";
+
+		const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
+		const STORAGE_KEY = "azure-maps-http-demo-routes-v1";
+		const TOKYO_STATION = [139.767125, 35.681236];
+		const SAMPLE_ROUTES = {
+			tokyo: {
+				name: "東京観光ルート",
+				waypoints: [
+					{ name: "東京駅", position: [139.767125, 35.681236] },
+					{ name: "東京スカイツリー", position: [139.8107, 35.7101] },
+					{ name: "東京タワー", position: [139.7454, 35.6586] },
+					{ name: "羽田空港 第1ターミナル", position: [139.7846, 35.5494] }
+				]
+			},
+			bay: {
+				name: "東京湾岸ルート",
+				waypoints: [
+					{ name: "東京駅", position: [139.767125, 35.681236] },
+					{ name: "豊洲市場", position: [139.7854, 35.6441] },
+					{ name: "お台場海浜公園", position: [139.7745, 35.6298] },
+					{ name: "羽田空港 第1ターミナル", position: [139.7846, 35.5494] }
+				]
+			}
+		};
+
+		const state = {
+			map: null,
+			routeSource: null,
+			waypointSource: null,
+			locationSource: null,
+			currentRoute: cloneRoute(SAMPLE_ROUTES.tokyo)
+		};
+
+		const elements = {};
+		document.addEventListener("DOMContentLoaded", initialize);
+
+		function initialize() {
+			cacheElements();
+			if (!/^https?:$/.test(window.location.protocol)) {
+				elements.protocolBlocker.hidden = false;
+				return;
+			}
+
+			bindEvents();
+			renderWaypoints();
+			renderSavedRoutes();
+			state.map = new atlas.Map("map", {
+				center: TOKYO_STATION,
+				zoom: 12,
+				language: "ja-JP",
+				view: "Auto",
+				style: "road",
+				authOptions: { authType: "subscriptionKey", subscriptionKey: AZURE_MAPS_KEY }
+			});
+			state.map.events.add("ready", onMapReady);
+			if (!hasConfiguredKey()) setStatus("2つのHTMLにあるAZURE_MAPS_KEYを設定してください。", true, false);
+		}
+
+		function cacheElements() {
+			[
+				"protocol-blocker", "current-location-button", "coordinate", "sample-route", "calculate-button",
+				"waypoint-list", "route-name", "save-button", "saved-routes", "status"
+			].forEach((id) => { elements[toCamelCase(id)] = document.getElementById(id); });
+		}
+
+		function bindEvents() {
+			elements.currentLocationButton.addEventListener("click", moveToCurrentLocation);
+			elements.sampleRoute.addEventListener("change", () => {
+				state.currentRoute = cloneRoute(SAMPLE_ROUTES[elements.sampleRoute.value]);
+				renderWaypoints();
+				renderWaypointShapes();
+				if (state.routeSource) state.routeSource.clear();
+			});
+			elements.calculateButton.addEventListener("click", calculateRoute);
+			elements.saveButton.addEventListener("click", saveCurrentRoute);
+		}
+
+		function onMapReady() {
+			state.map.controls.add([
+				new atlas.control.ZoomControl(),
+				new atlas.control.CompassControl()
+			], { position: "top-right" });
+
+			state.routeSource = new atlas.source.DataSource("http-demo-route-source");
+			state.waypointSource = new atlas.source.DataSource("http-demo-waypoint-source");
+			state.locationSource = new atlas.source.DataSource("http-demo-location-source");
+			state.map.sources.add([state.routeSource, state.waypointSource, state.locationSource]);
+			state.map.layers.add([
+				new atlas.layer.LineLayer(state.routeSource, "http-demo-route-outline", { strokeColor: "#ffffff", strokeWidth: 11 }),
+				new atlas.layer.LineLayer(state.routeSource, "http-demo-route-layer", { strokeColor: "#176b4d", strokeWidth: 7 }),
+				new atlas.layer.SymbolLayer(state.waypointSource, "http-demo-waypoint-layer", {
+					iconOptions: { image: "pin-round-blue", allowOverlap: true },
+					textOptions: { textField: ["get", "label"], color: "#ffffff", offset: [0, -0.05], allowOverlap: true }
+				}),
+				new atlas.layer.SymbolLayer(state.locationSource, "http-demo-location-layer", {
+					iconOptions: { image: "marker-blue", allowOverlap: true }
+				})
+			]);
+			renderWaypointShapes();
+			elements.currentLocationButton.disabled = false;
+			elements.calculateButton.disabled = false;
+			setStatus("HTTP専用デモを起動しました。", false);
+		}
+
+		function moveToCurrentLocation() {
+			if (!window.isSecureContext || !navigator.geolocation) {
+				setStatus("現在地取得にはlocalhostまたはHTTPSと、対応ブラウザが必要です。", true);
+				return;
+			}
+			setBusy(elements.currentLocationButton, true, "取得中...");
+			navigator.geolocation.getCurrentPosition((position) => {
+				const coordinates = [position.coords.longitude, position.coords.latitude];
+				elements.coordinate.textContent = `緯度 ${coordinates[1].toFixed(6)} / 経度 ${coordinates[0].toFixed(6)} / 精度 約${Math.round(position.coords.accuracy)}m`;
+				state.locationSource.clear();
+				state.locationSource.add(new atlas.data.Point(coordinates));
+				state.map.setCamera({ center: coordinates, zoom: 15 });
+				setBusy(elements.currentLocationButton, false, "現在地へ移動");
+				setStatus("端末の現在地を地図へ表示しました。", false);
+			}, (error) => {
+				setBusy(elements.currentLocationButton, false, "現在地へ移動");
+				setStatus(geolocationErrorMessage(error), true);
+			}, { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 });
+		}
+
+		async function calculateRoute() {
+			if (!ensureKey()) return;
+			setBusy(elements.calculateButton, true, "計算中...");
+			try {
+				const request = {
+					type: "FeatureCollection",
+					features: state.currentRoute.waypoints.map((waypoint, pointIndex) => ({
+						type: "Feature",
+						geometry: { type: "Point", coordinates: waypoint.position },
+						properties: { pointIndex, pointType: "waypoint" }
+					})),
+					travelMode: "driving",
+					optimizeRoute: "fastestWithTraffic",
+					routeOutputOptions: ["routePath"]
+				};
+				const data = await mapsRequest("/route/directions", { "api-version": "2025-01-01" }, {
+					method: "POST",
+					headers: { "Content-Type": "application/geo+json", "Accept-Language": "ja-JP" },
+					body: JSON.stringify(request)
+				});
+				const routeFeature = (data.features || []).find((feature) => feature.properties?.type === "RoutePath");
+				if (!routeFeature) throw new Error("利用可能なルートが返されませんでした。");
+				const lines = routeFeature.geometry?.coordinates || [];
+				const positions = lines.flat();
+				state.routeSource.clear();
+				state.routeSource.add(new atlas.data.MultiLineString(lines));
+				state.map.setCamera({ bounds: atlas.data.BoundingBox.fromPositions(positions), padding: 70 });
+				setStatus(`${state.currentRoute.name}を表示しました。`, false);
+			} catch (error) {
+				handleError("ルート計算", error);
+			} finally {
+				setBusy(elements.calculateButton, false, "ルートを表示");
+			}
+		}
+
+		function saveCurrentRoute() {
+			const name = elements.routeName.value.trim() || state.currentRoute.name;
+			const routes = readSavedRoutes();
+			routes.unshift({
+				version: 1,
+				id: globalThis.crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`,
+				name,
+				savedAt: new Date().toISOString(),
+				waypoints: state.currentRoute.waypoints.map(cloneWaypoint)
+			});
+			try {
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(routes.slice(0, 20)));
+				elements.routeName.value = "";
+				renderSavedRoutes();
+				setStatus(`${name}をlocalStorageへ保存しました。`, false);
+			} catch (error) {
+				handleError("ルート保存", error);
+			}
+		}
+
+		function readSavedRoutes() {
+			try {
+				const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+				return Array.isArray(parsed) ? parsed.filter(isValidSavedRoute) : [];
+			} catch (error) {
+				console.warn("保存済みルートを読み込めませんでした。", error);
+				return [];
+			}
+		}
+
+		function isValidSavedRoute(route) {
+			return route && route.version === 1 && typeof route.id === "string" && Array.isArray(route.waypoints) && route.waypoints.length >= 2;
+		}
+
+		function renderSavedRoutes() {
+			elements.savedRoutes.replaceChildren();
+			const routes = readSavedRoutes();
+			if (!routes.length) {
+				const empty = document.createElement("li");
+				empty.className = "empty";
+				empty.textContent = "保存済みルートはありません";
+				elements.savedRoutes.append(empty);
+				return;
+			}
+
+			routes.forEach((route) => {
+				const item = document.createElement("li");
+				item.className = "saved-item";
+				const title = document.createElement("div");
+				title.className = "saved-title";
+				title.textContent = route.name;
+				const detail = document.createElement("div");
+				detail.className = "saved-detail";
+				detail.textContent = `${route.waypoints.length}地点 / ${new Date(route.savedAt).toLocaleString("ja-JP")}`;
+				const actions = document.createElement("div");
+				actions.className = "saved-actions";
+				actions.append(
+					createButton("読込・再計算", () => loadSavedRoute(route)),
+					createButton("削除", () => deleteSavedRoute(route.id))
+				);
+				item.append(title, detail, actions);
+				elements.savedRoutes.append(item);
+			});
+		}
+
+		function loadSavedRoute(route) {
+			state.currentRoute = { name: route.name, waypoints: route.waypoints.map(cloneWaypoint) };
+			renderWaypoints();
+			renderWaypointShapes();
+			calculateRoute();
+		}
+
+		function deleteSavedRoute(id) {
+			try {
+				const routes = readSavedRoutes().filter((route) => route.id !== id);
+				localStorage.setItem(STORAGE_KEY, JSON.stringify(routes));
+				renderSavedRoutes();
+				setStatus("保存済みルートを削除しました。", false);
+			} catch (error) {
+				handleError("保存ルートの削除", error);
+			}
+		}
+
+		function renderWaypoints() {
+			elements.waypointList.replaceChildren();
+			state.currentRoute.waypoints.forEach((waypoint, index) => {
+				const item = document.createElement("li");
+				item.className = "waypoint";
+				const number = document.createElement("span");
+				number.textContent = String(index + 1);
+				const name = document.createElement("span");
+				name.textContent = waypoint.name;
+				item.append(number, name);
+				elements.waypointList.append(item);
+			});
+		}
+
+		function renderWaypointShapes() {
+			if (!state.waypointSource) return;
+			state.waypointSource.clear();
+			state.currentRoute.waypoints.forEach((waypoint, index) => {
+				state.waypointSource.add(new atlas.data.Feature(new atlas.data.Point(waypoint.position), { label: String(index + 1) }));
+			});
+		}
+
+		async function mapsRequest(path, params, options = {}) {
+			const searchParams = new URLSearchParams(params);
+			searchParams.set("subscription-key", AZURE_MAPS_KEY);
+			const response = await fetch(`https://atlas.microsoft.com${path}?${searchParams}`, options);
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) throw new Error(data.error?.message || data.detail || `${response.status} ${response.statusText}`);
+			return data;
+		}
+
+		function cloneRoute(route) {
+			return { name: route.name, waypoints: route.waypoints.map(cloneWaypoint) };
+		}
+
+		function cloneWaypoint(waypoint) {
+			return { name: String(waypoint.name), position: [Number(waypoint.position[0]), Number(waypoint.position[1])] };
+		}
+
+		function createButton(text, handler) {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "mini-button";
+			button.textContent = text;
+			button.addEventListener("click", handler);
+			return button;
+		}
+
+		function setBusy(button, busy, label) {
+			button.disabled = busy;
+			button.textContent = label;
+		}
+
+		function setStatus(message, isError, autoHide = true) {
+			elements.status.textContent = message;
+			elements.status.classList.toggle("error", Boolean(isError));
+			elements.status.hidden = false;
+			window.clearTimeout(setStatus.timer);
+			if (autoHide) setStatus.timer = window.setTimeout(() => { elements.status.hidden = true; }, 5500);
+		}
+
+		function handleError(operation, error) {
+			console.error(`${operation} failed`, error);
+			setStatus(`${operation}に失敗しました: ${error.message}`, true);
+		}
+
+		function ensureKey() {
+			if (hasConfiguredKey()) return true;
+			setStatus("AZURE_MAPS_KEYを設定してください。", true, false);
+			return false;
+		}
+
+		function hasConfiguredKey() {
+			return AZURE_MAPS_KEY && !AZURE_MAPS_KEY.startsWith("YOUR_");
+		}
+
+		function geolocationErrorMessage(error) {
+			if (error.code === error.PERMISSION_DENIED) return "現在地の利用が許可されませんでした。ブラウザの権限設定を確認してください。";
+			if (error.code === error.POSITION_UNAVAILABLE) return "現在地を取得できませんでした。";
+			if (error.code === error.TIMEOUT) return "現在地の取得がタイムアウトしました。";
+			return `現在地の取得に失敗しました: ${error.message}`;
+		}
+
+		function toCamelCase(value) {
+			return value.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+		}
+	</script>
+</body>
+</html>

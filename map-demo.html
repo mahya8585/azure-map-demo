@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="Azure Mapsの検索、ルート、交通、天気、タイムゾーン、位置情報を試せるデモ">
+	<title>Tokyo Route Lab | Azure Maps Demo</title>
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css">
+	<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+	<style>
+		:root {
+			--ink: #17201d;
+			--muted: #5b6863;
+			--paper: #f7f8f4;
+			--panel: #ffffff;
+			--line: #d9dfda;
+			--green: #176b4d;
+			--green-dark: #0f513a;
+			--yellow: #f3c969;
+			--red: #b5473d;
+			--shadow: 0 16px 42px rgba(23, 32, 29, 0.16);
+		}
+
+		* { box-sizing: border-box; }
+
+		html, body {
+			width: 100%;
+			height: 100%;
+			margin: 0;
+			overflow: hidden;
+			color: var(--ink);
+			background: var(--paper);
+			font-family: "Yu Gothic UI", "BIZ UDPGothic", sans-serif;
+		}
+
+		button, input, select { font: inherit; letter-spacing: 0; }
+		button { cursor: pointer; }
+
+		#map { position: absolute; inset: 0; }
+
+		.app-header {
+			position: absolute;
+			z-index: 4;
+			top: 16px;
+			left: 16px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			min-height: 54px;
+			padding: 8px 14px;
+			color: #fff;
+			background: var(--ink);
+			box-shadow: var(--shadow);
+		}
+
+		.app-header strong { font-family: Georgia, "Yu Mincho", serif; font-size: 19px; }
+		.app-header span { color: #b9c7c0; font-size: 12px; }
+
+		.workspace {
+			position: absolute;
+			z-index: 3;
+			top: 86px;
+			bottom: 18px;
+			left: 16px;
+			width: min(420px, calc(100vw - 32px));
+			display: flex;
+			flex-direction: column;
+			background: var(--panel);
+			border: 1px solid rgba(23, 32, 29, 0.14);
+			box-shadow: var(--shadow);
+		}
+
+		.tabs {
+			display: grid;
+			grid-template-columns: repeat(3, 1fr);
+			border-bottom: 1px solid var(--line);
+			background: #eef1ec;
+		}
+
+		.tab {
+			min-height: 42px;
+			border: 0;
+			border-right: 1px solid var(--line);
+			background: transparent;
+			color: var(--muted);
+			font-size: 13px;
+			font-weight: 700;
+		}
+
+		.tab:last-child { border-right: 0; }
+		.tab[aria-selected="true"] { color: var(--green-dark); background: #fff; box-shadow: inset 0 -3px var(--green); }
+
+		.tab-panel { display: none; flex: 1; min-height: 0; overflow-y: auto; padding: 16px; }
+		.tab-panel.active { display: block; }
+
+		h2 { margin: 0 0 12px; font-family: Georgia, "Yu Mincho", serif; font-size: 20px; }
+		h3 { margin: 22px 0 9px; font-size: 13px; text-transform: uppercase; }
+		p { margin: 6px 0; }
+
+		.field { display: grid; gap: 6px; margin-bottom: 12px; }
+		.field label, .eyebrow { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+		input[type="text"], select {
+			width: 100%;
+			min-height: 40px;
+			padding: 8px 10px;
+			border: 1px solid #aeb8b2;
+			border-radius: 4px;
+			color: var(--ink);
+			background: #fff;
+		}
+
+		input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(23, 107, 77, 0.25); outline-offset: 1px; }
+
+		.button-row { display: flex; flex-wrap: wrap; gap: 8px; }
+		.button-row > * { flex: 1 1 120px; }
+
+		.button {
+			min-height: 40px;
+			padding: 8px 12px;
+			border: 1px solid var(--green-dark);
+			border-radius: 4px;
+			color: #fff;
+			background: var(--green);
+			font-weight: 700;
+		}
+
+		.button:hover { background: var(--green-dark); }
+		.button.secondary { color: var(--green-dark); background: #fff; }
+		.button.secondary:hover { background: #edf6f1; }
+		.button.danger { color: var(--red); border-color: #d9a6a1; background: #fff; }
+		.button:disabled { cursor: not-allowed; opacity: 0.55; }
+
+		.search-results, .waypoint-list { display: grid; gap: 8px; margin: 12px 0 0; padding: 0; list-style: none; }
+
+		.result-item, .waypoint-item {
+			border: 1px solid var(--line);
+			border-radius: 6px;
+			background: #fff;
+		}
+
+		.result-main { width: 100%; padding: 10px; border: 0; text-align: left; background: transparent; }
+		.result-main:hover { background: #f1f5f1; }
+		.result-title { display: block; font-weight: 700; }
+		.result-address { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+		.result-actions { display: flex; gap: 6px; padding: 0 10px 10px; }
+		.mini-button { min-height: 30px; padding: 4px 8px; border: 1px solid #aeb8b2; border-radius: 4px; color: var(--ink); background: #fff; font-size: 12px; }
+
+		.waypoint-item { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 8px; }
+		.waypoint-index { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; background: var(--green); font-weight: 700; }
+		.waypoint-name { overflow: hidden; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+		.waypoint-role { color: var(--muted); font-size: 11px; }
+		.waypoint-actions { display: flex; gap: 4px; }
+
+		.choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+		.check { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 7px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; }
+
+		.summary {
+			margin-top: 14px;
+			padding: 12px;
+			border-left: 4px solid var(--yellow);
+			background: #fff8e7;
+			font-size: 13px;
+		}
+
+		.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 9px; }
+		.metric strong { display: block; font-family: Georgia, serif; font-size: 18px; }
+		.metric span { color: var(--muted); font-size: 10px; }
+
+		.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+		.info-cell { min-height: 58px; padding: 9px; border: 1px solid var(--line); background: #f8faf7; }
+		.info-cell strong { display: block; margin-top: 4px; font-size: 14px; overflow-wrap: anywhere; }
+
+		.status {
+			position: absolute;
+			z-index: 5;
+			right: 16px;
+			bottom: 18px;
+			max-width: min(420px, calc(100vw - 32px));
+			padding: 10px 14px;
+			border-left: 4px solid var(--green);
+			color: #fff;
+			background: var(--ink);
+			box-shadow: var(--shadow);
+			font-size: 13px;
+		}
+
+		.status.error { border-left-color: #ef8177; }
+		.status[hidden] { display: none; }
+		.empty { padding: 14px; color: var(--muted); border: 1px dashed #b8c1bb; text-align: center; font-size: 12px; }
+		.coordinate { color: var(--muted); font-family: Consolas, monospace; font-size: 11px; }
+
+		.mobile-toggle { display: none; }
+
+		@media (max-width: 700px) {
+			.app-header { right: 58px; top: 8px; left: 8px; min-height: 46px; }
+			.app-header span { display: none; }
+			.workspace { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; height: min(62vh, 570px); }
+			.workspace.collapsed { height: 43px; overflow: hidden; }
+			.mobile-toggle { display: block; position: absolute; z-index: 6; top: 8px; right: 8px; width: 42px; height: 46px; border: 0; color: #fff; background: var(--green); font-size: 20px; }
+			.status { right: 8px; bottom: calc(min(62vh, 570px) + 16px); left: 8px; max-width: none; }
+			.workspace.collapsed + .status { bottom: 59px; }
+		}
+	</style>
+</head>
+<body>
+	<div id="map" aria-label="Azure Maps 地図"></div>
+
+	<header class="app-header">
+		<strong>Tokyo Route Lab</strong>
+		<span>Azure Maps 統合デモ</span>
+	</header>
+
+	<button id="mobile-toggle" class="mobile-toggle" type="button" aria-label="操作パネルを開閉" aria-expanded="true">-</button>
+
+	<main id="workspace" class="workspace">
+		<nav class="tabs" aria-label="機能">
+			<button class="tab" type="button" role="tab" aria-selected="true" data-tab="search-panel">検索</button>
+			<button class="tab" type="button" role="tab" aria-selected="false" data-tab="route-panel">ルート</button>
+			<button class="tab" type="button" role="tab" aria-selected="false" data-tab="info-panel">地点情報</button>
+		</nav>
+
+		<section id="search-panel" class="tab-panel active" role="tabpanel">
+			<h2>場所を探す</h2>
+			<div class="field">
+				<label for="search-input">施設名・住所</label>
+				<input id="search-input" type="text" placeholder="例: 東京タワー" autocomplete="off">
+			</div>
+			<div class="button-row">
+				<button id="search-button" class="button" type="button">検索</button>
+				<button id="load-sample-button" class="button secondary" type="button">サンプル地点</button>
+			</div>
+			<p class="eyebrow">3文字以上で候補を自動検索します</p>
+			<ul id="search-results" class="search-results" aria-live="polite"></ul>
+		</section>
+
+		<section id="route-panel" class="tab-panel" role="tabpanel">
+			<h2>巡回ルート</h2>
+			<p class="eyebrow">出発地と終点を固定し、中間地点の訪問順を最適化します。</p>
+			<ol id="waypoint-list" class="waypoint-list"></ol>
+
+			<h3>計算条件</h3>
+			<div class="field">
+				<label for="route-type">最適化方針</label>
+				<select id="route-type">
+					<option value="fastest">最速</option>
+					<option value="shortest">最短</option>
+					<option value="short">距離・時間バランス</option>
+				</select>
+			</div>
+			<div class="choice-grid">
+				<label class="check"><input id="use-traffic" type="checkbox" checked> 交通情報を考慮</label>
+				<label class="check"><input id="show-traffic" type="checkbox"> 交通レイヤー</label>
+				<label class="check"><input id="avoid-motorways" type="checkbox"> 高速道路を回避</label>
+				<label class="check"><input id="avoid-tolls" type="checkbox"> 有料道路を回避</label>
+				<label class="check"><input id="avoid-ferries" type="checkbox"> フェリーを回避</label>
+			</div>
+			<div class="button-row" style="margin-top: 12px;">
+				<button id="route-button" class="button" type="button">ルート計算</button>
+				<button id="optimize-button" class="button secondary" type="button">訪問順を最適化</button>
+			</div>
+			<div id="route-summary"></div>
+
+		</section>
+
+		<section id="info-panel" class="tab-panel" role="tabpanel">
+			<h2>地点情報</h2>
+			<p>地図をクリックすると対象地点を変更できます。</p>
+			<p id="selected-coordinate" class="coordinate"></p>
+			<button id="place-info-button" class="button" type="button">天気・タイムゾーンを取得</button>
+			<div id="place-info" class="info-grid"></div>
+
+			<h3>IP Geolocation</h3>
+			<p class="eyebrow">Azure MapsでIPアドレスの国コードを判定します。</p>
+			<div class="field">
+				<label for="ip-input">IPv4 または IPv6</label>
+				<input id="ip-input" type="text" placeholder="例: 8.8.8.8">
+			</div>
+			<button id="ip-button" class="button secondary" type="button">国コードを取得</button>
+			<div id="ip-result"></div>
+		</section>
+	</main>
+
+	<div id="status" class="status" role="status" aria-live="polite" hidden></div>
+
+	<script>
+		"use strict";
+
+		// デモ用です。Azure MapsアカウントのPrimary Keyへ置き換えてください。
+		const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
+		const TOKYO_STATION = { name: "東京駅", position: [139.767125, 35.681236] };
+		const SEARCH_DELAY_MS = 350;
+
+		const state = {
+			map: null,
+			searchSource: null,
+			routeSource: null,
+			waypointSource: null,
+			popup: null,
+			searchTimer: null,
+			searchController: null,
+			selectedPosition: TOKYO_STATION.position.slice(),
+			waypoints: [clonePlace(TOKYO_STATION)],
+			routeResult: null
+		};
+
+		const elements = {};
+
+		document.addEventListener("DOMContentLoaded", initialize);
+
+		function initialize() {
+			cacheElements();
+			bindUiEvents();
+			renderWaypoints();
+			updateSelectedCoordinate();
+
+			if (!hasConfiguredKey()) {
+				setStatus("AZURE_MAPS_KEYをAzure Mapsのサブスクリプションキーへ置き換えてください。", true, false);
+			}
+
+			state.map = new atlas.Map("map", {
+				center: TOKYO_STATION.position,
+				zoom: 13,
+				language: "ja-JP",
+				view: "Auto",
+				style: "road",
+				authOptions: {
+					authType: "subscriptionKey",
+					subscriptionKey: AZURE_MAPS_KEY
+				}
+			});
+
+			state.map.events.add("ready", onMapReady);
+		}
+
+		function cacheElements() {
+			[
+				"workspace", "mobile-toggle", "search-input", "search-button", "load-sample-button",
+				"search-results", "waypoint-list", "route-type", "use-traffic", "show-traffic",
+				"avoid-motorways", "avoid-tolls", "avoid-ferries", "route-button", "optimize-button",
+				"route-summary", "selected-coordinate", "place-info-button", "place-info", "ip-input", "ip-button",
+				"ip-result", "status"
+			].forEach((id) => { elements[toCamelCase(id)] = document.getElementById(id); });
+		}
+
+		function bindUiEvents() {
+			document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => activateTab(tab.dataset.tab)));
+			elements.mobileToggle.addEventListener("click", toggleMobilePanel);
+			elements.searchButton.addEventListener("click", () => searchPlaces(true));
+			elements.searchInput.addEventListener("input", scheduleSearch);
+			elements.searchInput.addEventListener("keydown", (event) => {
+				if (event.key === "Enter") searchPlaces(true);
+			});
+			elements.loadSampleButton.addEventListener("click", loadSampleRoute);
+			elements.routeButton.addEventListener("click", () => calculateRoute(false));
+			elements.optimizeButton.addEventListener("click", () => calculateRoute(true));
+			elements.showTraffic.addEventListener("change", updateTrafficLayer);
+			elements.placeInfoButton.addEventListener("click", loadPlaceInfo);
+			elements.ipButton.addEventListener("click", loadIpGeolocation);
+		}
+
+		function onMapReady() {
+			state.map.controls.add([
+				new atlas.control.ZoomControl(),
+				new atlas.control.CompassControl(),
+				new atlas.control.StyleControl({ mapStyles: ["road", "grayscale_light", "satellite_road_labels"] })
+			], { position: "top-right" });
+
+			state.searchSource = new atlas.source.DataSource("search-results-source");
+			state.routeSource = new atlas.source.DataSource("route-source");
+			state.waypointSource = new atlas.source.DataSource("waypoint-source");
+			state.map.sources.add([state.searchSource, state.routeSource, state.waypointSource]);
+
+			const searchLayer = new atlas.layer.SymbolLayer(state.searchSource, "search-results-layer", {
+				iconOptions: { image: "pin-round-darkblue", allowOverlap: true }
+			});
+			const routeLayer = new atlas.layer.LineLayer(state.routeSource, "route-layer", {
+				strokeColor: "#176b4d",
+				strokeWidth: 7
+			});
+			const routeOutline = new atlas.layer.LineLayer(state.routeSource, "route-outline", {
+				strokeColor: "#ffffff",
+				strokeWidth: 11
+			});
+			const waypointLayer = new atlas.layer.SymbolLayer(state.waypointSource, "waypoint-layer", {
+				iconOptions: { image: "pin-round-blue", allowOverlap: true },
+				textOptions: { textField: ["get", "label"], color: "#ffffff", offset: [0, -0.05], allowOverlap: true }
+			});
+			state.map.layers.add([routeOutline, routeLayer, searchLayer, waypointLayer]);
+
+			state.popup = new atlas.Popup({ pixelOffset: [0, -24] });
+			state.map.events.add("click", searchLayer, (event) => {
+				if (event.shapes && event.shapes[0]) showSearchPopup(event.shapes[0]);
+			});
+			state.map.events.add("click", (event) => {
+				state.selectedPosition = event.position.slice();
+				updateSelectedCoordinate();
+			});
+
+			renderWaypointShapes();
+			updateTrafficLayer();
+			setStatus("地図を東京駅中心で表示しました。", false);
+		}
+
+		function activateTab(panelId) {
+			document.querySelectorAll(".tab").forEach((tab) => tab.setAttribute("aria-selected", String(tab.dataset.tab === panelId)));
+			document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === panelId));
+		}
+
+		function toggleMobilePanel() {
+			const collapsed = elements.workspace.classList.toggle("collapsed");
+			elements.mobileToggle.textContent = collapsed ? "+" : "-";
+			elements.mobileToggle.setAttribute("aria-expanded", String(!collapsed));
+		}
+
+		function scheduleSearch() {
+			window.clearTimeout(state.searchTimer);
+			const query = elements.searchInput.value.trim();
+			if (query.length < 3) {
+				clearNode(elements.searchResults);
+				return;
+			}
+			state.searchTimer = window.setTimeout(() => searchPlaces(false), SEARCH_DELAY_MS);
+		}
+
+		async function searchPlaces(centerResults) {
+			const query = elements.searchInput.value.trim();
+			if (query.length < 1) return setStatus("検索語を入力してください。", true);
+			if (!ensureKey()) return;
+
+			if (state.searchController) state.searchController.abort();
+			state.searchController = new AbortController();
+			setBusy(elements.searchButton, true, "検索中...");
+
+			try {
+				const center = state.map ? state.map.getCamera().center : TOKYO_STATION.position;
+				const data = await mapsRequest("/geocode", {
+					"api-version": "2026-01-01",
+					query,
+					top: "6",
+					coordinates: center.join(","),
+					view: "JP"
+				}, {
+					signal: state.searchController.signal,
+					headers: { "Accept-Language": "ja-JP" }
+				});
+				const places = normalizeSearchResults(data);
+				renderSearchResults(places);
+				renderSearchShapes(places, centerResults);
+				setStatus(places.length ? `${places.length}件の候補を表示しました。` : "該当する場所が見つかりませんでした。", !places.length);
+			} catch (error) {
+				if (error.name !== "AbortError") handleError("検索", error);
+			} finally {
+				setBusy(elements.searchButton, false, "検索");
+			}
+		}
+
+		function normalizeSearchResults(data) {
+			const features = Array.isArray(data.features) ? data.features : [];
+			return features.map((feature, index) => {
+				const properties = feature.properties || {};
+				const address = properties.address || {};
+				const coordinates = feature.geometry && feature.geometry.coordinates;
+				if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+				return {
+					id: feature.id || `search-${index}`,
+					name: properties.name || address.formattedAddress || address.freeformAddress || properties.type || "検索結果",
+					address: address.formattedAddress || address.freeformAddress || properties.addressLine || "住所情報なし",
+					position: [Number(coordinates[0]), Number(coordinates[1])]
+				};
+			}).filter((place) => place && place.position.every(Number.isFinite));
+		}
+
+		function renderSearchResults(places) {
+			clearNode(elements.searchResults);
+			if (!places.length) return appendEmpty(elements.searchResults, "検索結果はありません");
+
+			places.forEach((place) => {
+				const item = document.createElement("li");
+				item.className = "result-item";
+				const main = createButton("result-main", place.name, () => focusPlace(place));
+				const title = document.createElement("span");
+				title.className = "result-title";
+				title.textContent = place.name;
+				const address = document.createElement("span");
+				address.className = "result-address";
+				address.textContent = place.address;
+				main.replaceChildren(title, address);
+				main.addEventListener("mouseenter", () => showSearchPopupById(place.id));
+
+				const actions = document.createElement("div");
+				actions.className = "result-actions";
+				actions.append(
+					createButton("mini-button", "ルートへ追加", () => addWaypoint(place)),
+					createButton("mini-button", "地点情報", () => selectPlaceForInfo(place))
+				);
+				item.append(main, actions);
+				elements.searchResults.append(item);
+			});
+		}
+
+		function renderSearchShapes(places, centerResults) {
+			if (!state.searchSource) return;
+			state.searchSource.clear();
+			places.forEach((place) => state.searchSource.add(new atlas.data.Feature(new atlas.data.Point(place.position), place, place.id)));
+			if (centerResults && places.length) {
+				const bounds = atlas.data.BoundingBox.fromPositions(places.map((place) => place.position));
+				state.map.setCamera({ bounds, padding: 80, maxZoom: 16 });
+			}
+		}
+
+		function focusPlace(place) {
+			state.map.setCamera({ center: place.position, zoom: 16 });
+			showSearchPopupById(place.id);
+		}
+
+		function showSearchPopupById(id) {
+			if (!state.searchSource) return;
+			const shape = state.searchSource.getShapeById(id);
+			if (shape) showSearchPopup(shape);
+		}
+
+		function showSearchPopup(shape) {
+			const place = shape.getProperties();
+			const content = document.createElement("div");
+			content.style.padding = "10px";
+			const title = document.createElement("strong");
+			title.textContent = place.name;
+			const address = document.createElement("div");
+			address.textContent = place.address;
+			address.style.marginTop = "5px";
+			address.style.fontSize = "12px";
+			content.append(title, address);
+			state.popup.setOptions({ position: shape.getCoordinates(), content });
+			state.popup.open(state.map);
+		}
+
+		function addWaypoint(place) {
+			state.waypoints.push(clonePlace(place));
+			state.routeResult = null;
+			renderWaypoints();
+			renderWaypointShapes();
+			activateTab("route-panel");
+			setStatus(`${place.name}をルートへ追加しました。`, false);
+		}
+
+		function selectPlaceForInfo(place) {
+			state.selectedPosition = place.position.slice();
+			updateSelectedCoordinate();
+			state.map.setCamera({ center: place.position, zoom: 15 });
+			activateTab("info-panel");
+		}
+
+		function loadSampleRoute() {
+			state.waypoints = [
+				clonePlace(TOKYO_STATION),
+				{ name: "東京スカイツリー", position: [139.8107, 35.7101] },
+				{ name: "東京タワー", position: [139.7454, 35.6586] },
+				{ name: "羽田空港 第1ターミナル", position: [139.7846, 35.5494] }
+			];
+			state.routeResult = null;
+			renderWaypoints();
+			renderWaypointShapes();
+			activateTab("route-panel");
+			setStatus("東京周遊のサンプル地点を読み込みました。", false);
+		}
+
+		function renderWaypoints() {
+			clearNode(elements.waypointList);
+			state.waypoints.forEach((place, index) => {
+				const item = document.createElement("li");
+				item.className = "waypoint-item";
+				const number = document.createElement("span");
+				number.className = "waypoint-index";
+				number.textContent = String(index + 1);
+				const text = document.createElement("div");
+				const name = document.createElement("div");
+				name.className = "waypoint-name";
+				name.textContent = place.name;
+				const role = document.createElement("div");
+				role.className = "waypoint-role";
+				role.textContent = waypointRole(index);
+				text.append(name, role);
+				const actions = document.createElement("div");
+				actions.className = "waypoint-actions";
+				if (index > 0) actions.append(createButton("mini-button", "↑", () => moveWaypoint(index, -1), "上へ移動"));
+				if (index < state.waypoints.length - 1 && index > 0) actions.append(createButton("mini-button", "↓", () => moveWaypoint(index, 1), "下へ移動"));
+				if (index > 0) actions.append(createButton("mini-button", "×", () => removeWaypoint(index), "削除"));
+				item.append(number, text, actions);
+				elements.waypointList.append(item);
+			});
+			if (!state.waypoints.length) appendEmpty(elements.waypointList, "地点を検索して追加してください");
+		}
+
+		function waypointRole(index) {
+			if (index === 0) return "出発地";
+			if (index === state.waypoints.length - 1) return "終点";
+			return "最適化対象の中間地点";
+		}
+
+		function moveWaypoint(index, delta) {
+			const target = index + delta;
+			if (target < 1 || target >= state.waypoints.length) return;
+			[state.waypoints[index], state.waypoints[target]] = [state.waypoints[target], state.waypoints[index]];
+			state.routeResult = null;
+			renderWaypoints();
+			renderWaypointShapes();
+		}
+
+		function removeWaypoint(index) {
+			state.waypoints.splice(index, 1);
+			state.routeResult = null;
+			renderWaypoints();
+			renderWaypointShapes();
+			if (state.routeSource) state.routeSource.clear();
+			clearNode(elements.routeSummary);
+		}
+
+		function renderWaypointShapes() {
+			if (!state.waypointSource) return;
+			state.waypointSource.clear();
+			state.waypoints.forEach((place, index) => {
+				state.waypointSource.add(new atlas.data.Feature(new atlas.data.Point(place.position), { label: String(index + 1), name: place.name }));
+			});
+		}
+
+		async function calculateRoute(optimizeOrder) {
+			if (!ensureKey()) return;
+			if (state.waypoints.length < 2) return setStatus("ルート計算には2地点以上が必要です。", true);
+			if (optimizeOrder && state.waypoints.length < 4) return setStatus("訪問順最適化には出発地・終点と2つ以上の中間地点が必要です。", true);
+
+			const activeButton = optimizeOrder ? elements.optimizeButton : elements.routeButton;
+			setBusy(activeButton, true, "計算中...");
+			try {
+				const request = buildRouteRequest(optimizeOrder);
+				const data = await mapsRequest("/route/directions", { "api-version": "2025-01-01" }, {
+					method: "POST",
+					headers: { "Content-Type": "application/geo+json", "Accept-Language": "ja-JP" },
+					body: JSON.stringify(request)
+				});
+				const routeFeature = (data.features || []).find((feature) => feature.properties?.type === "RoutePath");
+				if (!routeFeature) throw new Error("利用可能なルートが返されませんでした。");
+
+				const optimizedWaypoints = routeFeature.properties?.optimizedWaypoints;
+				if (optimizeOrder && Array.isArray(optimizedWaypoints)) {
+					applyOptimizedOrder(optimizedWaypoints);
+					renderWaypoints();
+					renderWaypointShapes();
+				}
+				state.routeResult = routeFeature;
+				renderRoute(routeFeature, optimizeOrder);
+				setStatus(optimizeOrder ? "訪問順を最適化してルートを表示しました。" : "ルートを表示しました。", false);
+			} catch (error) {
+				handleError("ルート計算", error);
+			} finally {
+				setBusy(activeButton, false, optimizeOrder ? "訪問順を最適化" : "ルート計算");
+			}
+		}
+
+		function buildRouteRequest(optimizeOrder) {
+			const request = {
+				type: "FeatureCollection",
+				features: state.waypoints.map((place, pointIndex) => ({
+					type: "Feature",
+					geometry: { type: "Point", coordinates: place.position },
+					properties: { pointIndex, pointType: "waypoint" }
+				})),
+				travelMode: "driving",
+				optimizeRoute: routeOptimizationValue(),
+				optimizeWaypointOrder: optimizeOrder,
+				routeOutputOptions: ["routePath"]
+			};
+			const avoid = getAvoidValues();
+			if (avoid.length) request.avoid = avoid;
+			return request;
+		}
+
+		function routeOptimizationValue() {
+			if (elements.routeType.value === "fastest") {
+				return elements.useTraffic.checked ? "fastestWithTraffic" : "fastestWithoutTraffic";
+			}
+			return elements.routeType.value;
+		}
+
+		function getAvoidValues() {
+			const values = [];
+			if (elements.avoidMotorways.checked) values.push("limitedAccessHighways");
+			if (elements.avoidTolls.checked) values.push("tollRoads");
+			if (elements.avoidFerries.checked) values.push("ferries");
+			return values;
+		}
+
+		function applyOptimizedOrder(optimizedWaypoints) {
+			const lastIndex = state.waypoints.length - 1;
+			const sorted = optimizedWaypoints
+				.slice()
+				.filter((item) => item.inputIndex > 0 && item.inputIndex < lastIndex)
+				.sort((a, b) => a.optimizedIndex - b.optimizedIndex)
+				.map((item) => state.waypoints[item.inputIndex])
+				.filter(Boolean);
+			if (sorted.length === state.waypoints.length - 2) {
+				state.waypoints = [state.waypoints[0], ...sorted, state.waypoints[lastIndex]];
+			}
+		}
+
+		function renderRoute(routeFeature, optimized) {
+			const lineCoordinates = routeFeature.geometry?.coordinates || [];
+			const positions = lineCoordinates.flat();
+			if (!positions.length) throw new Error("ルート形状を取得できませんでした。");
+
+			state.routeSource.clear();
+			state.routeSource.add(new atlas.data.MultiLineString(lineCoordinates));
+			state.map.setCamera({ bounds: atlas.data.BoundingBox.fromPositions(positions), padding: 70 });
+
+			const summary = routeFeature.properties || {};
+			const travelTime = summary.durationTrafficInSeconds ?? summary.durationInSeconds;
+			const trafficDelay = summary.durationTrafficInSeconds == null ? 0 : Math.max(0, summary.durationTrafficInSeconds - summary.durationInSeconds);
+			clearNode(elements.routeSummary);
+			const box = document.createElement("div");
+			box.className = "summary";
+			const condition = document.createElement("strong");
+			const avoid = getAvoidValues();
+			condition.textContent = `${optimized ? "訪問順最適化済み / " : ""}${routeTypeLabel(elements.routeType.value)} / ${avoid.length ? `${avoid.map(avoidLabel).join("・")}を回避` : "回避指定なし"}`;
+			const grid = document.createElement("div");
+			grid.className = "summary-grid";
+			grid.append(
+				createMetric(formatDistance(summary.distanceInMeters), "総距離"),
+				createMetric(formatDuration(travelTime), "所要時間"),
+				createMetric(formatDuration(trafficDelay), "交通遅延")
+			);
+			box.append(condition, grid);
+			elements.routeSummary.append(box);
+		}
+
+		function updateTrafficLayer() {
+			if (!state.map) return;
+			state.map.setTraffic({ flow: elements.showTraffic.checked ? "relative" : "none", incidents: elements.showTraffic.checked });
+		}
+
+		async function loadPlaceInfo() {
+			if (!ensureKey()) return;
+			setBusy(elements.placeInfoButton, true, "取得中...");
+			const latitude = state.selectedPosition[1];
+			const longitude = state.selectedPosition[0];
+			try {
+				const [weather, timezone] = await Promise.all([
+					mapsRequest("/weather/currentConditions/json", {
+						"api-version": "1.1", query: `${latitude},${longitude}`, language: "ja-JP", unit: "metric", details: "true"
+					}),
+					mapsRequest("/timezone/byCoordinates/json", {
+						"api-version": "1.0", query: `${latitude},${longitude}`, options: "all"
+					}, { headers: { "Accept-Language": "ja-JP" } })
+				]);
+				renderPlaceInfo(weather.results && weather.results[0], timezone.timeZones && timezone.timeZones[0]);
+				setStatus("天気とタイムゾーンを取得しました。", false);
+			} catch (error) {
+				handleError("地点情報の取得", error);
+			} finally {
+				setBusy(elements.placeInfoButton, false, "天気・タイムゾーンを取得");
+			}
+		}
+
+		function renderPlaceInfo(weather, timezone) {
+			clearNode(elements.placeInfo);
+			if (weather) {
+				elements.placeInfo.append(
+					createInfoCell("現在の天気", weather.phrase || "不明"),
+					createInfoCell("気温 / 体感", `${weather.temperature?.value ?? "-"} ${weather.temperature?.unit || ""} / ${weather.realFeelTemperature?.value ?? "-"} ${weather.realFeelTemperature?.unit || ""}`),
+					createInfoCell("湿度", `${weather.relativeHumidity ?? "-"}%`),
+					createInfoCell("風", `${weather.wind?.direction?.localizedDescription || "-"} ${weather.wind?.speed?.value ?? "-"} ${weather.wind?.speed?.unit || ""}`)
+				);
+			}
+			if (timezone) {
+				elements.placeInfo.append(
+					createInfoCell("タイムゾーン", timezone.id || "不明"),
+					createInfoCell("現地時刻", formatDateTime(timezone.referenceTime?.wallTime)),
+					createInfoCell("UTCオフセット", timezone.referenceTime?.standardOffset || "不明"),
+					createInfoCell("日の出 / 日の入り", `${formatTime(timezone.referenceTime?.sunrise)} / ${formatTime(timezone.referenceTime?.sunset)}`)
+				);
+			}
+			if (!elements.placeInfo.children.length) appendEmpty(elements.placeInfo, "地点情報がありません");
+		}
+
+		async function loadIpGeolocation() {
+			const ip = elements.ipInput.value.trim();
+			if (!ip) return setStatus("IPアドレスを入力してください。", true);
+			if (!ensureKey()) return;
+			setBusy(elements.ipButton, true, "取得中...");
+			try {
+				const data = await mapsRequest("/geolocation/ip/json", { "api-version": "1.0", ip });
+				clearNode(elements.ipResult);
+				const box = document.createElement("div");
+				box.className = "summary";
+				box.textContent = `国・地域コード: ${data.countryRegion?.isoCode || "判定できません"}`;
+				elements.ipResult.append(box);
+				setStatus("IP Geolocationの結果を表示しました。", false);
+			} catch (error) {
+				handleError("IP Geolocation", error);
+			} finally {
+				setBusy(elements.ipButton, false, "国コードを取得");
+			}
+		}
+
+		async function mapsRequest(path, params, options = {}) {
+			const searchParams = new URLSearchParams();
+			Object.entries(params).forEach(([key, value]) => {
+				const values = Array.isArray(value) ? value : [value];
+				values.forEach((entry) => searchParams.append(key, entry));
+			});
+			searchParams.set("subscription-key", AZURE_MAPS_KEY);
+			const response = await fetch(`https://atlas.microsoft.com${path}?${searchParams}`, options);
+			const data = await response.json().catch(() => ({}));
+			if (!response.ok) {
+				const message = data.error?.message || data.detail || `${response.status} ${response.statusText}`;
+				throw new Error(message);
+			}
+			return data;
+		}
+
+		function updateSelectedCoordinate() {
+			elements.selectedCoordinate.textContent = `緯度 ${state.selectedPosition[1].toFixed(6)} / 経度 ${state.selectedPosition[0].toFixed(6)}`;
+		}
+
+		function setStatus(message, isError, autoHide = true) {
+			elements.status.textContent = message;
+			elements.status.classList.toggle("error", Boolean(isError));
+			elements.status.hidden = false;
+			window.clearTimeout(setStatus.timer);
+			if (autoHide) setStatus.timer = window.setTimeout(() => { elements.status.hidden = true; }, 5500);
+		}
+
+		function handleError(operation, error) {
+			console.error(`${operation} failed`, error);
+			const hint = /401|403|key|subscription/i.test(error.message) ? " キーとAzure Mapsアカウントの状態を確認してください。" : "";
+			setStatus(`${operation}に失敗しました: ${error.message}${hint}`, true);
+		}
+
+		function ensureKey() {
+			if (hasConfiguredKey()) return true;
+			setStatus("先にAZURE_MAPS_KEYを設定してください。", true, false);
+			return false;
+		}
+
+		function hasConfiguredKey() {
+			return AZURE_MAPS_KEY && !AZURE_MAPS_KEY.startsWith("YOUR_");
+		}
+
+		function setBusy(button, busy, label) {
+			button.disabled = busy;
+			button.textContent = label;
+		}
+
+		function clearNode(node) { node.replaceChildren(); }
+
+		function appendEmpty(parent, message) {
+			const empty = document.createElement(parent.tagName === "UL" || parent.tagName === "OL" ? "li" : "div");
+			empty.className = "empty";
+			empty.textContent = message;
+			parent.append(empty);
+		}
+
+		function createButton(className, text, handler, ariaLabel) {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = className;
+			button.textContent = text;
+			if (ariaLabel) button.setAttribute("aria-label", ariaLabel);
+			button.addEventListener("click", (event) => {
+				event.stopPropagation();
+				handler();
+			});
+			return button;
+		}
+
+		function createMetric(value, label) {
+			const metric = document.createElement("div");
+			metric.className = "metric";
+			const strong = document.createElement("strong");
+			strong.textContent = value;
+			const span = document.createElement("span");
+			span.textContent = label;
+			metric.append(strong, span);
+			return metric;
+		}
+
+		function createInfoCell(label, value) {
+			const cell = document.createElement("div");
+			cell.className = "info-cell";
+			const caption = document.createElement("span");
+			caption.className = "eyebrow";
+			caption.textContent = label;
+			const strong = document.createElement("strong");
+			strong.textContent = value;
+			cell.append(caption, strong);
+			return cell;
+		}
+
+		function clonePlace(place) { return { name: String(place.name), position: [Number(place.position[0]), Number(place.position[1])] }; }
+		function toCamelCase(value) { return value.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()); }
+		function formatDistance(meters = 0) { return meters >= 1000 ? `${(meters / 1000).toFixed(1)} km` : `${meters} m`; }
+		function formatDuration(seconds = 0) { const minutes = Math.round(seconds / 60); return minutes >= 60 ? `${Math.floor(minutes / 60)}時間${minutes % 60}分` : `${minutes}分`; }
+		function routeTypeLabel(value) { return ({ fastest: "最速", shortest: "最短", short: "距離・時間バランス" })[value] || value; }
+		function avoidLabel(value) { return ({ limitedAccessHighways: "高速道路", tollRoads: "有料道路", ferries: "フェリー" })[value] || value; }
+		function formatDateTime(value) { return value ? new Date(value).toLocaleString("ja-JP") : "不明"; }
+		function formatTime(value) { return value ? new Date(value).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" }) : "不明"; }
+
+	</script>
+</body>
+</html>
