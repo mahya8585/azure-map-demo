@@ -9,6 +9,7 @@ export class FleetMap {
 			style: "road",
 			authOptions: { authType: "subscriptionKey", subscriptionKey }
 		});
+		this.weatherLayer = null;
 	}
 
 	initialize(routes, vehicles) {
@@ -39,9 +40,27 @@ export class FleetMap {
 					1.4
 				)));
 
+				this.weatherLayer = new atlas.layer.TileLayer({
+					tileUrl: "https://{azMapsDomain}/map/tile?api-version=2024-04-01&tilesetId=microsoft.weather.radar.main&zoom={z}&x={x}&y={y}",
+					opacity: 0.7,
+					visible: false
+				}, "weather-radar-layer");
+
 				this.map.layers.add([
-					new atlas.layer.LineLayer(this.routeSource, "route-outline", { strokeColor: "#ffffff", strokeWidth: 9 }),
-					new atlas.layer.LineLayer(this.routeSource, "route-lines", { strokeColor: ["get", "color"], strokeWidth: 5, strokeOpacity: 0.82 }),
+					new atlas.layer.LineLayer(this.routeSource, "route-outline", {
+						strokeColor: "#ffffff",
+						strokeWidth: 13,
+						strokeOpacity: 0.9,
+						lineJoin: "round",
+						lineCap: "round"
+					}),
+					new atlas.layer.LineLayer(this.routeSource, "route-lines", {
+						strokeColor: ["get", "color"],
+						strokeWidth: 7,
+						strokeOpacity: 0.95,
+						lineJoin: "round",
+						lineCap: "round"
+					}),
 					new atlas.layer.SymbolLayer(this.destinationSource, "destination-points", {
 						iconOptions: { image: "pin-round-darkblue", allowOverlap: true },
 						textOptions: { textField: ["get", "label"], color: "#ffffff", offset: [0, -0.05], allowOverlap: true }
@@ -61,7 +80,8 @@ export class FleetMap {
 							haloWidth: 2,
 							allowOverlap: true
 						}
-					})
+					}),
+					this.weatherLayer
 				]);
 
 				this.map.controls.add([new atlas.control.ZoomControl(), new atlas.control.CompassControl()], { position: "top-right" });
@@ -92,6 +112,15 @@ export class FleetMap {
 
 	focusVehicle(vehicle) {
 		this.map.setCamera({ center: vehicle.position, zoom: 14, duration: 600 });
+	}
+
+	setTrafficLayerEnabled(enabled) {
+		this.map?.setTraffic({ flow: enabled ? "relative" : "none", incidents: enabled });
+	}
+
+	setWeatherLayerEnabled(enabled) {
+		if (!this.weatherLayer) return;
+		this.weatherLayer.setOptions({ visible: enabled, opacity: 0.7 });
 	}
 
 	showAll() {

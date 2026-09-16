@@ -26,9 +26,12 @@
 			<section class="map-panel" aria-label="配送車両マップ">
 				<div id="map"></div>
 				<div class="map-toolbar" aria-label="地図操作">
+					<div class="layer-controls">
+						<label class="layer-toggle"><input id="show-traffic" type="checkbox" checked> 交通レイヤー</label>
+						<label class="layer-toggle"><input id="show-weather" type="checkbox"> 気象レイヤー</label>
+					</div>
 					<button id="show-all-button" class="icon-button" type="button" title="全車両を表示" disabled>全体表示</button>
 				</div>
-				
 			</section>
 
 			<aside class="fleet-panel" aria-label="配送車両ステータス">

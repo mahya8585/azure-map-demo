@@ -24,7 +24,7 @@ async function initialize() {
 			fetchJson("data/routes.geojson"),
 			fetchJson("data/vehicles.json")
 		]);
-		const { routes, routesById, routeIndexes, vehicles } = prepareData(routeData, vehicleData);
+		const { routes, routesById, routeIndexes, vehicles } = await prepareData(routeData, vehicleData);
 		state.selectedVehicleId = vehicles[0].id;
 		state.fleetMap = new FleetMap(AZURE_MAPS_KEY, selectVehicle);
 		await state.fleetMap.initialize(routes, vehicles);
@@ -39,16 +39,24 @@ async function initialize() {
 	}
 }
 
-function prepareData(routeData, vehicleData) {
+async function prepareData(routeData, vehicleData) {
 	if (routeData?.type !== "FeatureCollection" || !Array.isArray(routeData.features)) throw new Error("routes.geojsonの形式が正しくありません。");
 	if (!Array.isArray(vehicleData?.vehicles) || vehicleData.vehicles.length === 0) throw new Error("vehicles.jsonに車両がありません。");
 
+	const roadAlignedRoutes = await Promise.all(routeData.features.map(async (route) => {
+		const fallbackCoordinates = route.geometry?.coordinates;
+		if (!route.properties?.routeId || route.geometry?.type !== "LineString") {
+			throw new Error("すべてのルートにrouteIdとLineStringが必要です。");
+		}
+		const actualCoordinates = await fetchRoadAlignedCoordinates(route.properties.routeId, fallbackCoordinates);
+		return { ...route, geometry: { ...route.geometry, coordinates: actualCoordinates } };
+	}));
+
 	const routeIndexes = new Map();
 	const routesById = new Map();
-	const routes = routeData.features.map((route) => {
+	const routes = roadAlignedRoutes.map((route) => {
 		const routeId = route.properties?.routeId;
 		const coordinates = route.geometry?.coordinates;
-		if (!routeId || route.geometry?.type !== "LineString") throw new Error("すべてのルートにrouteIdとLineStringが必要です。");
 		if (routesById.has(routeId)) throw new Error(`routeIdが重複しています: ${routeId}`);
 		const routeIndex = buildRouteIndex(coordinates);
 		const destinations = route.properties.destinations.map((destination) => {
@@ -76,6 +84,30 @@ function prepareData(routeData, vehicleData) {
 		return { ...vehicle, progressMeters: Math.max(0, Number(vehicle.progressMeters) || 0) };
 	});
 	return { routes, routesById, routeIndexes, vehicles };
+}
+
+async function fetchRoadAlignedCoordinates(routeId, fallbackCoordinates) {
+	if (!Array.isArray(fallbackCoordinates) || fallbackCoordinates.length < 2 || !AZURE_MAPS_KEY || AZURE_MAPS_KEY.startsWith("YOUR_")) {
+		return fallbackCoordinates;
+	}
+
+	const query = fallbackCoordinates.map(([longitude, latitude]) => `${latitude},${longitude}`).join(":");
+	const url = `https://atlas.microsoft.com/route/directions/json?api-version=1.0&query=${encodeURIComponent(query)}&travelMode=car&routeType=fastest&subscription-key=${encodeURIComponent(AZURE_MAPS_KEY)}`;
+
+	try {
+		const response = await fetch(url);
+		if (!response.ok) throw new Error(`route API error ${response.status}`);
+		const payload = await response.json();
+		const points = payload?.routes?.[0]?.legs?.flatMap((leg) => leg.points || []);
+		if (!Array.isArray(points) || points.length < 2) return fallbackCoordinates;
+		return points.map((point) => {
+			if (Array.isArray(point)) return [point[1], point[0]];
+			return [Number(point.longitude), Number(point.latitude)];
+		});
+	} catch (error) {
+		console.warn(`Route geometry for ${routeId} fell back to static coordinates`, error);
+		return fallbackCoordinates;
+	}
 }
 
 function renderSnapshot(snapshots, simulatorState) {
@@ -139,8 +171,16 @@ function selectVehicle(vehicleId) {
 }
 
 function bindEvents() {
+	elements.showTraffic.addEventListener("change", (event) => {
+		state.fleetMap.setTrafficLayerEnabled(event.target.checked);
+	});
+	elements.showWeather.addEventListener("change", (event) => {
+		state.fleetMap.setWeatherLayerEnabled(event.target.checked);
+	});
 	elements.showAllButton.addEventListener("click", () => state.fleetMap.showAll());
 	window.addEventListener("beforeunload", () => state.simulator.destroy());
+	state.fleetMap.setTrafficLayerEnabled(elements.showTraffic.checked);
+	state.fleetMap.setWeatherLayerEnabled(elements.showWeather.checked);
 }
 
 async function fetchJson(path) {
@@ -150,7 +190,7 @@ async function fetchJson(path) {
 }
 
 function cacheElements() {
-	["fleet-summary", "show-all-button", "vehicle-list", "status", "blocker", "blocker-title", "blocker-detail", "blocker-command"]
+	["fleet-summary", "show-all-button", "show-traffic", "show-weather", "vehicle-list", "status", "blocker", "blocker-title", "blocker-detail", "blocker-command"]
 		.forEach((id) => { elements[toCamelCase(id)] = document.getElementById(id); });
 }
 
