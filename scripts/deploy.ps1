@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-	[string] $Location = "westus2",
+	[string] $Location = "eastus2",
 
 	[string] $EnvironmentName = "demo",
 
@@ -46,7 +46,6 @@ $deploymentArguments = @(
 	"--location", $Location,
 	"--template-file", $templateFile,
 	"--parameters", $parameterFileArgument,
-	"environmentName=$EnvironmentName",
 	"location=$Location",
 	"allowLocalhost=$allowLocalhost"
 )

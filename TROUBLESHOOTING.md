@@ -36,6 +36,29 @@ Azure Mapsの要求数制限に達しています。しばらく待って再試�
 
 [map-demo.html](map-demo.html)のルート表示では、Route APIに加えてSnap to Roads APIを複数回呼ぶ場合があります。長いルートほどリクエスト数が増えるため、短いルートでも再現するか確認してください。
 
+## route-appのデプロイスクリプトを実行できない
+
+- リポジトリのルートで`.\scripts\deploy.ps1`を実行します。
+- `az --version`と`swa --version`が成功することを確認します。
+- Azure Static Web Apps CLIがない場合は`npm install -g @azure/static-web-apps-cli`でインストールします。
+- `az account show`で対象サブスクリプションへサインインしていることを確認します。
+- PowerShellの実行ポリシーで停止する場合は、組織のポリシーに従って署名済みスクリプトまたは許可された実行方法を使用します。
+
+## route-appのAzureリソース作成に失敗する
+
+- What-if出力とAzure CLIのエラーに表示されたリソース名、リージョン、権限を確認します。
+- Resource GroupとStatic Web AppsはEast US 2（`eastus2`）、Azure MapsはEast US（`eastus`）を使用します。
+- Static Web Appsの`route-app`が利用できない場合は、[infra/main.parameters.json](infra/main.parameters.json)の`staticWebAppName`を変更します。
+- Resource Group作成とリソースプロバイダー登録を行えるサブスクリプション権限が必要です。
+- Bicepだけを検証する場合は`az bicep build --file .\infra\main.bicep`を実行します。
+
+## デプロイ後のroute-appで401または403になる
+
+- [infra/main.parameters.json](infra/main.parameters.json)の`allowLocalhost`とAzure MapsのCORS設定を確認します。
+- デプロイ先の`https://<ホスト名>.azurestaticapps.net`が許可オリジンに含まれていることを確認します。
+- Azure Mapsキーをローテーションした場合は、デプロイスクリプトを再実行して`config.js`を更新します。
+- ブラウザキャッシュを更新し、開発者ツールのNetworkで失敗したAzure Mapsリクエストを確認します。
+
 ## http-demo.htmlが操作画面を表示しない
 
 [http-demo.html](http-demo.html)は`file://`では初期化せず、HTTPサーバーが必要という画面を表示します。リポジトリのディレクトリで次を実行し、`http://localhost:8000/http-demo.html`を開きます。

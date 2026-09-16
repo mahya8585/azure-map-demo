@@ -21,6 +21,22 @@ const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
 
 配送トラッキングデモはキーをソースへ直接記述せず、[route-app/config.example.js](route-app/config.example.js)を`route-app/config.js`へコピーして設定します。Azure Static Web Appsへの配置方法は[route-app/README.md](route-app/README.md#azure-static-web-appsへデプロイ)を参照してください。
 
+## 配送トラッキングデモのAzure構成
+
+`route-app/`は、BicepとPowerShellスクリプトを使って次の構成へ手動デプロイできます。GitHub Actionsは使用しません。
+
+| リソース | 名前 | リージョン / SKU |
+| --- | --- | --- |
+| Resource Group | `maps-demo` | East US 2 (`eastus2`) |
+| Azure Static Web Apps | `route-app` | East US 2 (`eastus2`) / Free |
+| Azure Maps | `maps` | East US (`eastus`) / Gen2 G2 |
+
+```powershell
+.\scripts\deploy.ps1 -EnvironmentName demo
+```
+
+スクリプトはリソース変更のWhat-if表示後にBicepをデプロイし、Azure Mapsキーを一時的な`config.js`へ設定してStatic Web Appsへ静的ファイルを配置します。必要なツール、権限、パラメーター、セキュリティ上の注意は[route-app/README.md](route-app/README.md#azure-static-web-appsへデプロイ)を参照してください。
+
 ### HTTPサーバーなしで実行
 
 [map-demo.html](map-demo.html)をエクスプローラーから直接開きます。`file://`で、地図、検索、ルート、交通、天気、タイムゾーン、IP Geolocationを実行できます。
@@ -140,6 +156,8 @@ Azure Maps Geolocationは端末の緯度・経度を返すAPIではありませ�
 map-demo.html   file://で動くAzure Maps統合デモ
 http-demo.html  localhostまたはHTTPSで動く現在地・ルート保存デモ
 route-app/      localhostまたはHTTPSで動く配送トラッキングデモ
+infra/          Resource Group、Static Web Apps、Azure MapsのBicep
+scripts/        Azureリソースとroute-appの手動デプロイスクリプト
 README.md       セットアップ、操作方法、実現方式の説明
 TROUBLESHOOTING.md  エラーや動作上の問題に対する確認事項
 ```

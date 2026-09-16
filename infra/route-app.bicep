@@ -1,11 +1,10 @@
 targetScope = 'resourceGroup'
 
-param resourceToken string
 param location string
+param mapsLocation string
+param mapsAccountName string
+param staticWebAppName string
 param allowLocalhost bool
-
-var staticWebAppName = 'azswa${resourceToken}'
-var mapsAccountName = 'azmap${resourceToken}'
 
 resource staticWebApp 'Microsoft.Web/staticSites@2025-03-01' = {
   name: staticWebAppName
@@ -34,7 +33,7 @@ var allowedOrigins = allowLocalhost
 
 resource mapsAccount 'Microsoft.Maps/accounts@2023-06-01' = {
   name: mapsAccountName
-  location: location
+  location: mapsLocation
   kind: 'Gen2'
   sku: {
     name: 'G2'

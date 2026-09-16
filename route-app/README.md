@@ -36,12 +36,37 @@ python -m http.server 8000
 - Azure Static Web Apps Free
 - Azure Maps Gen2 (G2)
 
-前提として、Azure CLIとAzure Static Web Apps CLIをインストールし、リポジトリのルートでAzureへサインインします。
+### 前提条件
+
+- Azure CLI
+- Node.jsとAzure Static Web Apps CLI（`npm install -g @azure/static-web-apps-cli`）
+- 対象サブスクリプションでResource Groupを作成できる権限
+- Azure MapsキーとStatic Web Appsデプロイトークンを取得できる権限
+
+リポジトリのルートでAzureへサインインし、対象サブスクリプションを選択します。
 
 ```powershell
 az login
 az account set --subscription <SUBSCRIPTION_ID>
+az account show --query "{name:name,id:id}" --output table
 ```
+
+### デプロイ設定
+
+既定値は[../infra/main.parameters.json](../infra/main.parameters.json)で管理します。
+
+| パラメーター | 既定値 | 用途 |
+| --- | --- | --- |
+| `resourceGroupName` | `maps-demo` | Resource Group名 |
+| `location` | `eastus2` | Resource GroupとStatic Web Appsのリージョン |
+| `mapsLocation` | `eastus` | Azure Mapsのリージョン |
+| `mapsAccountName` | `maps` | Azure Mapsアカウント名 |
+| `staticWebAppName` | `route-app` | Static Web Apps名 |
+| `allowLocalhost` | `true` | Azure Maps CORSで`http://localhost:8000`を許可 |
+
+Static Web Apps名は利用可能である必要があります。同名リソースが原因で作成に失敗する場合は、`staticWebAppName`を利用可能な名前へ変更してください。
+
+### 実行
 
 次のコマンドで、変更内容の確認、Azureリソースの作成、静的ファイルの配置を順に実行します。
 
@@ -49,9 +74,28 @@ az account set --subscription <SUBSCRIPTION_ID>
 .\scripts\deploy.ps1 -EnvironmentName demo
 ```
 
-Resource Group、Static Web Apps、Azure Mapsの名前はサブスクリプション、リージョン、環境名から自動生成されます。既定のリージョンは`westus2`です。本番オリジンと`http://localhost:8000`がAzure MapsのCORSへ登録されます。ローカルオリジンを許可しない場合は`-ExcludeLocalhost`を指定してください。
+| オプション | 既定値 | 用途 |
+| --- | --- | --- |
+| `-EnvironmentName` | `demo` | サブスクリプションデプロイ履歴の名前に使用 |
+| `-Location` | `eastus2` | Resource GroupとStatic Web Appsのリージョンを上書き |
+| `-ExcludeLocalhost` | 未指定 | 指定時はAzure Maps CORSからlocalhostを除外 |
 
-スクリプトはAzure MapsキーとStatic Web Appsのデプロイトークンを取得し、一時ディレクトリ内だけに`config.js`を生成して配置します。GitHub ActionsやRepository secretsは使用しません。処理完了時にデプロイ先URLが表示されます。
+本番オリジンと、既定では`http://localhost:8000`がAzure MapsのCORSへ登録されます。公開デモでlocalhostが不要な場合は次のように実行します。
+
+```powershell
+.\scripts\deploy.ps1 -EnvironmentName demo -ExcludeLocalhost
+```
+
+### スクリプトの処理
+
+1. `Microsoft.Web`と`Microsoft.Maps`リソースプロバイダーを登録します。
+1. サブスクリプションスコープのWhat-ifを表示します。
+1. [../infra/main.bicep](../infra/main.bicep)をデプロイします。
+1. Azure MapsキーとStatic Web Appsデプロイトークンを取得します。
+1. 一時ディレクトリへ`route-app/`をコピーし、そこだけに`config.js`を生成します。
+1. Static Web Appsへ配置した後、一時ファイルと環境変数を削除します。
+
+GitHub ActionsやRepository secretsは使用しません。処理完了時にデプロイ先URLが表示されます。
 
 サブスクリプションキーは配信後のブラウザーから確認できます。短期デモでは許可オリジンを本番URLへ限定し、Azure Mapsの使用量を監視して、デモ終了後にキーをローテーションしてください。一般公開または継続運用へ移行する場合は、共有キーではなく短期間のSASトークンまたはMicrosoft Entra IDとAzure RBACを使用してください。
 

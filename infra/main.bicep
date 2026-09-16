@@ -1,18 +1,22 @@
 targetScope = 'subscription'
 
-@description('Short name used to create deterministic resource names.')
-@minLength(1)
-@maxLength(20)
-param environmentName string = 'demo'
+@description('Name of the resource group.')
+param resourceGroupName string = 'maps-demo'
 
-@description('Azure region used by the resource group, Static Web App, and Azure Maps account.')
-param location string = 'westus2'
+@description('Azure region used by the resource group and Static Web App.')
+param location string = 'eastus2'
+
+@description('Azure region used by the Azure Maps account.')
+param mapsLocation string = 'eastus'
+
+@description('Name of the Azure Maps account.')
+param mapsAccountName string = 'maps'
+
+@description('Name of the Static Web App.')
+param staticWebAppName string = 'route-app'
 
 @description('Allow the local development server to call Azure Maps.')
 param allowLocalhost bool = true
-
-var resourceToken = uniqueString(subscription().id, location, environmentName)
-var resourceGroupName = 'azrg${resourceToken}'
 
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
@@ -23,8 +27,10 @@ module routeAppResources './route-app.bicep' = {
   name: 'routeAppResources'
   scope: resourceGroup
   params: {
-    resourceToken: resourceToken
     location: location
+    mapsLocation: mapsLocation
+    mapsAccountName: mapsAccountName
+    staticWebAppName: staticWebAppName
     allowLocalhost: allowLocalhost
   }
 }
