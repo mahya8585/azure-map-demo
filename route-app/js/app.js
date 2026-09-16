@@ -85,7 +85,6 @@ function renderSnapshot(snapshots, simulatorState) {
 	const drivingCount = snapshots.filter((vehicle) => vehicle.status === "driving").length;
 	const completedCount = snapshots.filter((vehicle) => vehicle.status === "completed").length;
 	elements.fleetSummary.textContent = `${drivingCount}台走行中 / ${completedCount}台完了`;
-	elements.toggleButton.textContent = simulatorState.paused ? "再生" : "一時停止";
 }
 
 function createVehicleCard(vehicle) {
@@ -140,14 +139,6 @@ function selectVehicle(vehicleId) {
 }
 
 function bindEvents() {
-	elements.toggleButton.addEventListener("click", () => {
-		if (state.simulator.paused) state.simulator.start();
-		else state.simulator.pause();
-	});
-	elements.resetButton.addEventListener("click", () => {
-		state.simulator.reset();
-		setStatus("全車両を初期位置へ戻しました。", false);
-	});
 	elements.showAllButton.addEventListener("click", () => state.fleetMap.showAll());
 	window.addEventListener("beforeunload", () => state.simulator.destroy());
 }
@@ -159,12 +150,12 @@ async function fetchJson(path) {
 }
 
 function cacheElements() {
-	["fleet-summary", "show-all-button", "toggle-button", "reset-button", "vehicle-list", "status", "blocker", "blocker-title", "blocker-detail", "blocker-command"]
+	["fleet-summary", "show-all-button", "vehicle-list", "status", "blocker", "blocker-title", "blocker-detail", "blocker-command"]
 		.forEach((id) => { elements[toCamelCase(id)] = document.getElementById(id); });
 }
 
 function setControlsDisabled(disabled) {
-	[elements.showAllButton, elements.toggleButton, elements.resetButton].forEach((button) => { button.disabled = disabled; });
+	elements.showAllButton.disabled = disabled;
 }
 
 function setStatus(message, error) {

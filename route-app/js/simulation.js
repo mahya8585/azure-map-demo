@@ -8,7 +8,6 @@ export class FleetSimulator {
 		this.routeIndexes = routeIndexes;
 		this.onUpdate = onUpdate;
 		this.intervalMilliseconds = options.intervalMilliseconds || 10000;
-		this.stepMeters = options.stepMeters || 50;
 		this.timer = null;
 		this.paused = true;
 	}
@@ -36,9 +35,10 @@ export class FleetSimulator {
 	tick() {
 		this.vehicles = this.vehicles.map((vehicle) => {
 			const routeIndex = this.routeIndexes.get(vehicle.routeId);
+			const stepMeters = vehicle.speedMetersPerSecond * this.intervalMilliseconds / 1000;
 			return {
 				...vehicle,
-				progressMeters: Math.min(vehicle.progressMeters + this.stepMeters, routeIndex.totalDistance)
+				progressMeters: Math.min(vehicle.progressMeters + stepMeters, routeIndex.totalDistance)
 			};
 		});
 		this.emit();

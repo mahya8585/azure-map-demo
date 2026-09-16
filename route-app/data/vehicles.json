@@ -6,7 +6,7 @@
       "routeId": "east-loop",
       "color": "#087e8b",
       "progressMeters": 420,
-      "speedMetersPerSecond": 5,
+      "speedMetersPerSecond": 13.8888888889,
       "cargo": [
         { "sku": "ST-2048-GR", "name": "プレミアムシート グレー", "quantity": 12 },
         { "sku": "SP-810-H", "name": "高耐久スプリング", "quantity": 48 }
@@ -18,7 +18,7 @@
       "routeId": "south-line",
       "color": "#ef8354",
       "progressMeters": 1800,
-      "speedMetersPerSecond": 5,
+      "speedMetersPerSecond": 13.8888888889,
       "cargo": [
         { "sku": "FR-1120-BK", "name": "ベッドフレーム ブラック", "quantity": 6 },
         { "sku": "MT-900-S", "name": "シングルマットレス", "quantity": 10 }
@@ -30,7 +30,7 @@
       "routeId": "north-line",
       "color": "#7067cf",
       "progressMeters": 760,
-      "speedMetersPerSecond": 5,
+      "speedMetersPerSecond": 13.8888888889,
       "cargo": [
         { "sku": "SP-520-S", "name": "ソフトスプリング", "quantity": 80 }
       ]
@@ -41,7 +41,7 @@
       "routeId": "east-loop",
       "color": "#3a7d44",
       "progressMeters": 3100,
-      "speedMetersPerSecond": 5,
+      "speedMetersPerSecond": 13.8888888889,
       "cargo": [
         { "sku": "ST-3300-NV", "name": "リクライニングシート ネイビー", "quantity": 8 },
         { "sku": "LG-204-OA", "name": "オーク脚部セット", "quantity": 16 }
@@ -53,7 +53,7 @@
       "routeId": "south-line",
       "color": "#c44536",
       "progressMeters": 5200,
-      "speedMetersPerSecond": 5,
+      "speedMetersPerSecond": 13.8888888889,
       "cargo": [
         { "sku": "CS-440-WH", "name": "クッションユニット ホワイト", "quantity": 24 },
         { "sku": "SP-810-H", "name": "高耐久スプリング", "quantity": 36 }
