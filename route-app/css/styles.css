@@ -1,0 +1,93 @@
+:root {
+	--ink: #17201d;
+	--muted: #64716c;
+	--paper: #eef2ee;
+	--panel: #ffffff;
+	--line: #d9e0dc;
+	--green: #176b4d;
+	--green-dark: #0f513a;
+	--amber: #d49b23;
+	--red: #b5473d;
+	--shadow: 0 14px 36px rgba(23, 32, 29, 0.15);
+}
+
+* { box-sizing: border-box; }
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; color: var(--ink); background: var(--paper); font-family: "Yu Gothic UI", "BIZ UDPGothic", sans-serif; }
+button { font: inherit; letter-spacing: 0; cursor: pointer; }
+button:focus-visible { outline: 3px solid rgba(23, 107, 77, 0.28); outline-offset: 2px; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.app-shell { display: grid; grid-template-rows: 72px 1fr; height: 100%; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 12px 24px; color: #fff; background: var(--ink); }
+.app-header h1, .fleet-controls h2 { margin: 0; font-family: Georgia, "Yu Mincho", serif; letter-spacing: 0; }
+.app-header h1 { font-size: 24px; }
+.eyebrow { margin: 0 0 3px; color: #82928b; font-size: 10px; font-weight: 800; letter-spacing: 0; }
+.app-header .eyebrow { color: #aebcb6; }
+.header-status { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.live-dot { width: 9px; height: 9px; border-radius: 50%; background: #4fd49e; box-shadow: 0 0 0 5px rgba(79, 212, 158, 0.13); }
+
+.tracking-layout { display: grid; grid-template-columns: minmax(0, 1fr) 430px; min-height: 0; }
+.map-panel { position: relative; min-width: 0; }
+#map { position: absolute; inset: 0; }
+.map-toolbar { position: absolute; z-index: 2; top: 14px; left: 14px; }
+.icon-button, .primary-button, .secondary-button { min-height: 38px; padding: 8px 12px; border-radius: 4px; font-weight: 700; }
+.icon-button { border: 1px solid rgba(23, 32, 29, 0.2); color: var(--ink); background: #fff; box-shadow: var(--shadow); }
+.map-legend { position: absolute; z-index: 2; bottom: 18px; left: 18px; display: grid; gap: 3px; padding: 10px 12px; background: rgba(255, 255, 255, 0.94); border-left: 4px solid var(--green); box-shadow: var(--shadow); font-size: 12px; }
+.map-legend span { color: var(--muted); }
+
+.fleet-panel { min-width: 0; overflow-y: auto; background: var(--paper); border-left: 1px solid var(--line); }
+.fleet-controls { position: sticky; z-index: 3; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; background: rgba(238, 242, 238, 0.96); border-bottom: 1px solid var(--line); }
+.fleet-controls h2 { font-size: 20px; }
+.control-row { display: flex; gap: 6px; }
+.primary-button { color: #fff; border: 1px solid var(--green-dark); background: var(--green); }
+.secondary-button { color: var(--green-dark); border: 1px solid #9cb2a7; background: #fff; }
+.vehicle-list { display: grid; gap: 10px; padding: 12px; }
+.vehicle-card { position: relative; display: grid; gap: 8px; width: 100%; padding: 13px 14px 14px 17px; overflow: hidden; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--panel); text-align: left; }
+.vehicle-card::before { position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--vehicle-color); content: ""; }
+.vehicle-card:hover { border-color: #9eaaa4; }
+.vehicle-card.selected { border-color: var(--vehicle-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--vehicle-color) 18%, transparent); }
+.vehicle-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.vehicle-header strong { font-family: Georgia, "Yu Mincho", serif; font-size: 17px; }
+.vehicle-identity { color: var(--muted); font-family: Consolas, monospace; font-size: 11px; }
+.status-badge { flex: 0 0 auto; padding: 3px 7px; border-radius: 3px; font-size: 10px; font-weight: 800; }
+.status-badge.driving { color: #0d563d; background: #d9f2e8; }
+.status-badge.paused { color: #79540a; background: #fff0c9; }
+.status-badge.completed { color: #4f5a55; background: #e5e9e7; }
+.eta-grid { display: grid; grid-template-columns: 1.35fr 0.8fr 0.9fr; gap: 8px; padding: 9px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.metric { display: grid; align-content: start; gap: 3px; min-width: 0; }
+.metric strong { overflow-wrap: anywhere; font-size: 13px; }
+.metric-label { color: var(--muted); font-size: 10px; font-weight: 700; }
+.cargo-list { display: grid; gap: 3px; font-size: 11px; }
+
+.status-message { position: fixed; z-index: 10; right: 18px; bottom: 18px; max-width: min(420px, calc(100vw - 36px)); padding: 11px 14px; color: #fff; border-left: 4px solid #4fd49e; background: var(--ink); box-shadow: var(--shadow); font-size: 13px; }
+.status-message.error { border-left-color: #ef8177; }
+.status-message[hidden], .blocker[hidden] { display: none; }
+.blocker { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(23, 32, 29, 0.92); }
+.blocker-message { width: min(560px, 100%); padding: 24px; border-top: 6px solid var(--amber); background: #fff; box-shadow: var(--shadow); }
+.blocker-message h2 { margin: 0 0 10px; font-family: Georgia, "Yu Mincho", serif; }
+.blocker-message p { color: var(--muted); line-height: 1.7; }
+.blocker-message code { display: block; padding: 10px; overflow-wrap: anywhere; background: #e9eeea; }
+
+@media (max-width: 850px) {
+	.app-shell { grid-template-rows: 62px 1fr; }
+	.app-header { padding: 9px 14px; }
+	.app-header h1 { font-size: 19px; }
+	.header-status { font-size: 11px; }
+	.tracking-layout { grid-template-columns: 1fr; grid-template-rows: minmax(260px, 43vh) minmax(0, 1fr); }
+	.fleet-panel { border-top: 1px solid var(--line); border-left: 0; }
+	.fleet-controls { padding: 10px 12px; }
+	.vehicle-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.eta-grid { grid-template-columns: 1fr 1fr; }
+	.eta-grid .metric:last-child { grid-column: 1 / -1; }
+}
+
+@media (max-width: 560px) {
+	.app-header .eyebrow { display: none; }
+	.header-status { max-width: 135px; text-align: right; }
+	.vehicle-list { grid-template-columns: 1fr; }
+	.map-legend { right: 12px; bottom: 12px; left: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* { scroll-behavior: auto !important; }
+}

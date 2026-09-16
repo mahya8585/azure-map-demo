@@ -1,12 +1,13 @@
 # Azure Maps 統合デモ
 
-東京駅を初期表示し、Azure Mapsの地図表示、検索、複数地点ルート、交通、天気、タイムゾーン、IP Geolocationを試す、ビルド不要のデモです。`map-demo.html`は直接開いて使う統合デモ、`http-demo.html`はHTTPオリジンが必要な現在地・ルート保存デモです。
+東京駅を初期表示し、Azure Mapsの地図表示、検索、複数地点ルート、交通、天気、タイムゾーン、IP Geolocationを試す、ビルド不要のデモです。`map-demo.html`は直接開いて使う統合デモ、`http-demo.html`はHTTPオリジンが必要な現在地・ルート保存デモ、`route-app/`は5台の配送車両を追跡するデモです。
 
-主なデモシナリオは次の3つです。
+主なデモシナリオは次の4つです。
 
 1. 複数の目的地を設定し、中間地点の訪問順とルートを最適化する
 2. HTTP専用デモで、ルートをブラウザへ保存し、後から読み込んで再計算する
 3. 高速道路、有料道路、フェリーの回避条件や、交通考慮の有無によるルートを比較する
+4. 登録ルート上を走る配送車両の位置、積載SKU、次の配送先と到着予想をリアルタイム表示する
 
 ## セットアップ
 
@@ -35,6 +36,8 @@ python -m http.server 8000
 1. ブラウザで `http://localhost:8000/http-demo.html` を開きます。
 
 [http-demo.html](http-demo.html)は、現在地取得とオリジン単位のルート保存を安定して実演するページです。`file://`で開いた場合は機能を開始せず、HTTPサーバーが必要であることを表示します。本番相当の環境ではHTTPSを使用してください。
+
+配送トラッキングデモは `http://localhost:8000/route-app/` で開きます。セットアップとデータ編集方法は[route-app/README.md](route-app/README.md)を参照してください。
 
 > [!WARNING]
 > この実装は説明用デモのため、サブスクリプションキーをHTMLへ記述します。HTMLを公開するとキーも閲覧可能になります。公開環境や本番環境では、Microsoft Entra ID、短期間のSASトークン、許可オリジン、またはサーバー側プロキシを使用してください。実キーをGitへコミットしないでください。
@@ -134,6 +137,7 @@ Azure Maps Geolocationは端末の緯度・経度を返すAPIではありませ�
 ```text
 map-demo.html   file://で動くAzure Maps統合デモ
 http-demo.html  localhostまたはHTTPSで動く現在地・ルート保存デモ
+route-app/      localhostまたはHTTPSで動く配送トラッキングデモ
 README.md       セットアップ、操作方法、実現方式の説明
 TROUBLESHOOTING.md  エラーや動作上の問題に対する確認事項
 ```

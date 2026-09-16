@@ -1,0 +1,63 @@
+{
+  "vehicles": [
+    {
+      "id": "TRK-101",
+      "name": "東京東1号車",
+      "routeId": "east-loop",
+      "color": "#087e8b",
+      "progressMeters": 420,
+      "speedMetersPerSecond": 5,
+      "cargo": [
+        { "sku": "ST-2048-GR", "name": "プレミアムシート グレー", "quantity": 12 },
+        { "sku": "SP-810-H", "name": "高耐久スプリング", "quantity": 48 }
+      ]
+    },
+    {
+      "id": "TRK-205",
+      "name": "湾岸2号車",
+      "routeId": "south-line",
+      "color": "#ef8354",
+      "progressMeters": 1800,
+      "speedMetersPerSecond": 5,
+      "cargo": [
+        { "sku": "FR-1120-BK", "name": "ベッドフレーム ブラック", "quantity": 6 },
+        { "sku": "MT-900-S", "name": "シングルマットレス", "quantity": 10 }
+      ]
+    },
+    {
+      "id": "TRK-314",
+      "name": "北東京3号車",
+      "routeId": "north-line",
+      "color": "#7067cf",
+      "progressMeters": 760,
+      "speedMetersPerSecond": 5,
+      "cargo": [
+        { "sku": "SP-520-S", "name": "ソフトスプリング", "quantity": 80 }
+      ]
+    },
+    {
+      "id": "TRK-408",
+      "name": "東京東4号車",
+      "routeId": "east-loop",
+      "color": "#3a7d44",
+      "progressMeters": 3100,
+      "speedMetersPerSecond": 5,
+      "cargo": [
+        { "sku": "ST-3300-NV", "name": "リクライニングシート ネイビー", "quantity": 8 },
+        { "sku": "LG-204-OA", "name": "オーク脚部セット", "quantity": 16 }
+      ]
+    },
+    {
+      "id": "TRK-512",
+      "name": "羽田5号車",
+      "routeId": "south-line",
+      "color": "#c44536",
+      "progressMeters": 5200,
+      "speedMetersPerSecond": 5,
+      "cargo": [
+        { "sku": "CS-440-WH", "name": "クッションユニット ホワイト", "quantity": 24 },
+        { "sku": "SP-810-H", "name": "高耐久スプリング", "quantity": 36 }
+      ]
+    }
+  ]
+}

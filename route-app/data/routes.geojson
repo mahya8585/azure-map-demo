@@ -1,0 +1,68 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "routeId": "east-loop",
+        "name": "東東京インテリア便",
+        "color": "#087e8b",
+        "destinations": [
+          { "order": 1, "name": "日本橋ショールーム", "coordinateIndex": 3 },
+          { "order": 2, "name": "錦糸町物流センター", "coordinateIndex": 6 },
+          { "order": 3, "name": "有明配送拠点", "coordinateIndex": 9 }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.7671, 35.6812], [139.7734, 35.6800], [139.7788, 35.6790], [139.7822, 35.6837],
+          [139.7920, 35.6870], [139.8010, 35.6910], [139.8140, 35.6960], [139.8060, 35.6810],
+          [139.7980, 35.6640], [139.7930, 35.6340]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "routeId": "south-line",
+        "name": "品川・羽田工場便",
+        "color": "#ef8354",
+        "destinations": [
+          { "order": 1, "name": "芝浦組立工場", "coordinateIndex": 3 },
+          { "order": 2, "name": "品川部品倉庫", "coordinateIndex": 6 },
+          { "order": 3, "name": "羽田最終配送所", "coordinateIndex": 10 }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.7671, 35.6812], [139.7600, 35.6740], [139.7530, 35.6660], [139.7480, 35.6530],
+          [139.7510, 35.6420], [139.7540, 35.6320], [139.7420, 35.6200], [139.7520, 35.6040],
+          [139.7660, 35.5890], [139.7740, 35.5680], [139.7846, 35.5494]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "routeId": "north-line",
+        "name": "北東京資材便",
+        "color": "#7067cf",
+        "destinations": [
+          { "order": 1, "name": "秋葉原サービス拠点", "coordinateIndex": 2 },
+          { "order": 2, "name": "上野資材センター", "coordinateIndex": 5 },
+          { "order": 3, "name": "北千住配送所", "coordinateIndex": 9 }
+        ]
+      },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [139.7671, 35.6812], [139.7710, 35.6900], [139.7745, 35.6984], [139.7760, 35.7050],
+          [139.7780, 35.7110], [139.7774, 35.7138], [139.7890, 35.7210], [139.7980, 35.7290],
+          [139.8030, 35.7390], [139.8048, 35.7495]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="登録ルートと配送車両の現在位置を表示するAzure Mapsデモ">
+	<title>Fleet Route Monitor | 配送トラッキング</title>
+	<link rel="stylesheet" href="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.css">
+	<link rel="stylesheet" href="css/styles.css">
+	<script src="https://atlas.microsoft.com/sdk/javascript/mapcontrol/3/atlas.min.js"></script>
+</head>
+<body>
+	<div class="app-shell">
+		<header class="app-header">
+			<div>
+				<p class="eyebrow">LIVE DELIVERY CONTROL</p>
+				<h1>Fleet Route Monitor</h1>
+			</div>
+			<div class="header-status">
+				<span class="live-dot" aria-hidden="true"></span>
+				<span id="fleet-summary">データ読込中</span>
+			</div>
+		</header>
+
+		<main class="tracking-layout">
+			<section class="map-panel" aria-label="配送車両マップ">
+				<div id="map"></div>
+				<div class="map-toolbar" aria-label="地図操作">
+					<button id="show-all-button" class="icon-button" type="button" title="全車両を表示" disabled>全体表示</button>
+				</div>
+				<div class="map-legend">
+					<strong>登録ルート</strong>
+					<span>車両は10秒ごとに50m移動</span>
+				</div>
+			</section>
+
+			<aside class="fleet-panel" aria-label="配送車両ステータス">
+				<div class="fleet-controls">
+					<div>
+						<p class="eyebrow">FLEET STATUS</p>
+						<h2>配送車両</h2>
+					</div>
+					<div class="control-row">
+						<button id="toggle-button" class="primary-button" type="button" disabled>再生</button>
+						<button id="reset-button" class="secondary-button" type="button" disabled>リセット</button>
+					</div>
+				</div>
+				<div id="vehicle-list" class="vehicle-list" aria-live="polite"></div>
+			</aside>
+		</main>
+	</div>
+
+	<div id="status" class="status-message" role="status" aria-live="assertive" hidden></div>
+	<div id="blocker" class="blocker" hidden>
+		<div class="blocker-message">
+			<p class="eyebrow">SETUP REQUIRED</p>
+			<h2 id="blocker-title">起動できません</h2>
+			<p id="blocker-detail"></p>
+			<code id="blocker-command"></code>
+		</div>
+	</div>
+
+	<script type="module" src="js/app.js"></script>
+</body>
+</html>
