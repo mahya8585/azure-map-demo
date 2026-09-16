@@ -2,7 +2,7 @@ import { buildRouteIndex } from "./geo.js";
 import { FleetMap } from "./map.js";
 import { FleetSimulator } from "./simulation.js";
 
-const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
+const AZURE_MAPS_KEY = window.ROUTE_APP_CONFIG?.azureMapsKey?.trim() || "";
 const elements = {};
 const state = { snapshots: [], selectedVehicleId: null, simulator: null, fleetMap: null };
 
@@ -15,7 +15,7 @@ async function initialize() {
 		return;
 	}
 	if (!hasConfiguredKey()) {
-		showBlocker("Azure Mapsキーを設定してください", "route-app/js/app.js の AZURE_MAPS_KEY をAzure Mapsのサブスクリプションキーへ置き換えてください。", "const AZURE_MAPS_KEY = \"...\";");
+		showBlocker("Azure Mapsキーを設定してください", "デプロイ設定またはローカルの config.js にAzure Mapsのサブスクリプションキーを設定してください。", "route-app/config.example.js を確認してください");
 		return;
 	}
 

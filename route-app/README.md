@@ -4,10 +4,18 @@
 
 ## 起動方法
 
-1. [js/app.js](js/app.js)の`AZURE_MAPS_KEY`をAzure Mapsのサブスクリプションキーへ置き換えます。
+1. 設定ファイルのサンプルを`config.js`へコピーします。
+
+```powershell
+Copy-Item route-app/config.example.js route-app/config.js
+```
+
+1. `config.js`の`azureMapsKey`をAzure Mapsのサブスクリプションキーへ置き換えます。
 
 ```javascript
-const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
+window.ROUTE_APP_CONFIG = {
+  azureMapsKey: "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY"
+};
 ```
 
 1. リポジトリのルートでHTTPサーバーを起動します。
@@ -18,7 +26,34 @@ python -m http.server 8000
 
 1. ブラウザで `http://localhost:8000/route-app/` を開きます。
 
-データファイルを`fetch`で取得するため、`file://`からは起動できません。実キーはGitへコミットしないでください。公開環境ではMicrosoft Entra ID、短期間のSASトークン、許可オリジン、またはサーバー側プロキシを使用してください。
+データファイルを`fetch`で取得するため、`file://`からは起動できません。`config.js`は`.gitignore`の対象です。実キーをGitへコミットしないでください。
+
+## Azure Static Web Appsへデプロイ
+
+このデモはビルド処理やバックエンドを必要としません。Bicepと手動デプロイスクリプトで、次のリソースを作成します。
+
+- Resource Group
+- Azure Static Web Apps Free
+- Azure Maps Gen2 (G2)
+
+前提として、Azure CLIとAzure Static Web Apps CLIをインストールし、リポジトリのルートでAzureへサインインします。
+
+```powershell
+az login
+az account set --subscription <SUBSCRIPTION_ID>
+```
+
+次のコマンドで、変更内容の確認、Azureリソースの作成、静的ファイルの配置を順に実行します。
+
+```powershell
+.\scripts\deploy.ps1 -EnvironmentName demo
+```
+
+Resource Group、Static Web Apps、Azure Mapsの名前はサブスクリプション、リージョン、環境名から自動生成されます。既定のリージョンは`westus2`です。本番オリジンと`http://localhost:8000`がAzure MapsのCORSへ登録されます。ローカルオリジンを許可しない場合は`-ExcludeLocalhost`を指定してください。
+
+スクリプトはAzure MapsキーとStatic Web Appsのデプロイトークンを取得し、一時ディレクトリ内だけに`config.js`を生成して配置します。GitHub ActionsやRepository secretsは使用しません。処理完了時にデプロイ先URLが表示されます。
+
+サブスクリプションキーは配信後のブラウザーから確認できます。短期デモでは許可オリジンを本番URLへ限定し、Azure Mapsの使用量を監視して、デモ終了後にキーをローテーションしてください。一般公開または継続運用へ移行する場合は、共有キーではなく短期間のSASトークンまたはMicrosoft Entra IDとAzure RBACを使用してください。
 
 ## 操作
 
@@ -30,6 +65,12 @@ python -m http.server 8000
 ## ファイル構成
 
 ```text
+infra/
+  main.bicep             Resource Groupとモジュール配置
+  route-app.bicep        Static Web AppsとAzure Maps
+  main.parameters.json   環境別パラメーター
+scripts/
+  deploy.ps1             Azureリソース作成と静的ファイル配置
 route-app/
   index.html            画面構造とAzure Maps Web SDKの読込
   css/styles.css        配送管制画面のレスポンシブスタイル

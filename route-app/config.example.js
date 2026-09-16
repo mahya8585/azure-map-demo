@@ -1,0 +1,3 @@
+window.ROUTE_APP_CONFIG = {
+	azureMapsKey: "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY"
+};

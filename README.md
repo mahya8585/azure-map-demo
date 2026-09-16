@@ -13,11 +13,13 @@
 
 1. Azure PortalでAzure Mapsアカウントを作成します。
 2. Azure Mapsアカウントの「認証」からPrimary Keyを取得します。
-3. [map-demo.html](map-demo.html)と[http-demo.html](http-demo.html)を開き、両方の次の定数を取得したキーへ置き換えます。
+3. [map-demo.html](map-demo.html)と[http-demo.html](http-demo.html)を開き、使用するファイルの次の定数を取得したキーへ置き換えます。
 
 ```javascript
 const AZURE_MAPS_KEY = "YOUR_AZURE_MAPS_SUBSCRIPTION_KEY";
 ```
+
+配送トラッキングデモはキーをソースへ直接記述せず、[route-app/config.example.js](route-app/config.example.js)を`route-app/config.js`へコピーして設定します。Azure Static Web Appsへの配置方法は[route-app/README.md](route-app/README.md#azure-static-web-appsへデプロイ)を参照してください。
 
 ### HTTPサーバーなしで実行
 
